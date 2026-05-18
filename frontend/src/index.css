@@ -1,0 +1,302 @@
+@import "tailwindcss";
+
+/* ─── Design Token: Biophilic Enterprise Color Palette ──────────────────── */
+@theme {
+  /* Surfaces — layered dark olive/forest greens */
+  --color-background:                #10150b;
+  --color-surface:                   #10150b;
+  --color-surface-dim:               #10150b;
+  --color-surface-container-lowest:  #0b1006;
+  --color-surface-container-low:     #181d12;
+  --color-surface-container:         #1c2116;
+  --color-surface-container-high:    #272c20;
+  --color-surface-container-highest: #31372a;
+  --color-surface-bright:            #363b2e;
+  --color-surface-variant:           #31372a;
+  --color-surface-tint:              #b9ccb0;
+
+  /* Outline */
+  --color-outline:         #8e9289;
+  --color-outline-variant: #444841;
+
+  /* Primary — Sage Green */
+  --color-primary:                  #b9ccb0;
+  --color-primary-container:        #8b9d83;
+  --color-primary-fixed:            #d5e8cb;
+  --color-primary-fixed-dim:        #b9ccb0;
+  --color-on-primary:               #253421;
+  --color-on-primary-container:     #253420;
+  --color-on-primary-fixed:         #101f0d;
+  --color-on-primary-fixed-variant: #3b4b36;
+  --color-inverse-primary:          #52634c;
+
+  /* Secondary — Terracotta */
+  --color-secondary:                  #ffb694;
+  --color-secondary-container:        #7c3307;
+  --color-secondary-fixed:            #ffdbcc;
+  --color-secondary-fixed-dim:        #ffb694;
+  --color-on-secondary:               #571f00;
+  --color-on-secondary-container:     #ffa174;
+  --color-on-secondary-fixed:         #351000;
+  --color-on-secondary-fixed-variant: #793105;
+
+  /* Tertiary — Ochre/Olive */
+  --color-tertiary:                  #bfcd8f;
+  --color-tertiary-container:        #919e65;
+  --color-tertiary-fixed:            #dbe9a9;
+  --color-tertiary-fixed-dim:        #bfcd8f;
+  --color-on-tertiary:               #2a3406;
+  --color-on-tertiary-container:     #2a3406;
+  --color-on-tertiary-fixed:         #171e00;
+  --color-on-tertiary-fixed-variant: #404b1b;
+
+  /* Error */
+  --color-error:             #ffb4ab;
+  --color-error-container:   #93000a;
+  --color-on-error:          #690005;
+  --color-on-error-container:#ffdad6;
+
+  /* On-surface */
+  --color-on-background:      #e0e5d3;
+  --color-on-surface:         #e0e5d3;
+  --color-on-surface-variant: #c4c8be;
+  --color-inverse-surface:    #e0e5d3;
+  --color-inverse-on-surface: #2d3226;
+}
+
+/* ─── Base Reset ────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  font-size: 16px;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 24px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+}
+
+/* ─── Typography Utilities ───────────────────────────────────────────────── */
+.font-serif    { font-family: 'Literata', Georgia, serif; }
+.font-sans     { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+
+.text-display-lg {
+  font-family: 'Literata', Georgia, serif;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.text-headline-lg {
+  font-family: 'Literata', Georgia, serif;
+  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.text-headline-md {
+  font-family: 'Literata', Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.text-section-label {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  {
+  background: var(--color-outline-variant);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-outline); }
+
+/* ─── Noise Texture Overlay ──────────────────────────────────────────────── */
+.noise-bg {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ─── Card Base ──────────────────────────────────────────────────────────── */
+.card {
+  background-color: var(--color-surface-container);
+  border: 1px solid rgba(68,72,65,0.5);
+  border-radius: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  border-color: rgba(139,157,131,0.3);
+  box-shadow: 0 0 0 1px rgba(139,157,131,0.08), 0 8px 32px rgba(0,0,0,0.25);
+}
+
+.card-inset {
+  background-color: var(--color-surface-container-low);
+  border: 1px solid rgba(68,72,65,0.4);
+  border-radius: 0.875rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── Skeleton Shimmer ───────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-container)     25%,
+    var(--color-surface-container-high) 50%,
+    var(--color-surface-container)     75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1);    opacity: 0.8; }
+  100% { transform: scale(1.35); opacity: 0;   }
+}
+
+.animate-fade-in      { animation: fadeIn 0.35s ease-out both; }
+.animate-slide-left   { animation: slideInLeft 0.3s ease-out both; }
+
+/* Staggered fade-in for list items */
+.animate-stagger > * { animation: fadeIn 0.35s ease-out both; }
+.animate-stagger > *:nth-child(1) { animation-delay: 0ms;   }
+.animate-stagger > *:nth-child(2) { animation-delay: 60ms;  }
+.animate-stagger > *:nth-child(3) { animation-delay: 120ms; }
+.animate-stagger > *:nth-child(4) { animation-delay: 180ms; }
+.animate-stagger > *:nth-child(5) { animation-delay: 240ms; }
+.animate-stagger > *:nth-child(6) { animation-delay: 300ms; }
+
+/* ─── Chip / Tag Utilities ───────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.chip-primary  { background: color-mix(in srgb, var(--color-primary-container) 25%, transparent); color: var(--color-primary); }
+.chip-tertiary { background: color-mix(in srgb, var(--color-tertiary-container) 25%, transparent); color: var(--color-tertiary); }
+.chip-error    { background: color-mix(in srgb, var(--color-error-container) 25%, transparent); color: var(--color-error); }
+.chip-scope1   { background: rgba(145, 158, 101, 0.2); color: var(--color-tertiary); }
+.chip-scope2   { background: rgba(139, 157, 131, 0.2); color: var(--color-primary); }
+.chip-scope3   { background: rgba(124, 51, 7, 0.25);   color: var(--color-secondary); }
+
+/* ─── Icon Button ────────────────────────────────────────────────────────── */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem; height: 2.5rem;
+  border-radius: 0.5rem;
+  color: var(--color-on-surface-variant);
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  background: var(--color-surface-variant);
+  color: var(--color-primary);
+}
+
+/* ─── Progress Bar ───────────────────────────────────────────────────────── */
+.progress-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-surface-container-highest);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--color-primary-container), var(--color-primary));
+  transition: width 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* ─── Plotly transparent bg ─────────────────────────────────────────────── */
+.plotly .main-svg { background: transparent !important; }
+
+/* ─── Focus Ring ─────────────────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Text Selection ─────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(185, 204, 176, 0.2);
+  color: var(--color-on-background);
+}
+
+/* ─── ReactFlow overrides ────────────────────────────────────────────────── */
+.react-flow__attribution { display: none; }
+.react-flow__controls button {
+  background: var(--color-surface-container) !important;
+  border-color: var(--color-surface-container-highest) !important;
+  color: var(--color-on-surface-variant) !important;
+  border-radius: 0.375rem;
+}
+.react-flow__controls button:hover {
+  background: var(--color-surface-variant) !important;
+  color: var(--color-primary) !important;
+}
+
+/* ─── Nav Active Indicator ───────────────────────────────────────────────── */
+.nav-indicator {
+  position: relative;
+}
+.nav-indicator::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 60%;
+  background: var(--color-primary);
+  border-radius: 0 9999px 9999px 0;
+}
