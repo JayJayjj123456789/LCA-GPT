@@ -51,21 +51,73 @@ async def health():
 
 # ─── Analyze ────────────────────────────────────────────────────
 
-@app.post("/api/analyze")
-async def analyze_pdf(file: UploadFile = File(...)):
-    """Upload PDF, extract text, run AI carbon audit, ingest to graph."""
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(400, "Only PDF files are accepted")
+def _extract_text_from_excel(file_path: str) -> str:
+    """Extract text from Excel file — single read, header auto-detection."""
+    import pandas as pd
+    try:
+        parts = []
+        # Read all sheets at once — no repeated open
+        all_sheets = pd.read_excel(file_path, sheet_name=None, header=None)
+        for sheet_name, df in all_sheets.items():
+            if df.empty:
+                continue
 
+            # Find header row — look for common column names
+            header_row = None
+            for i in range(min(30, len(df))):
+                row_text = ' '.join(str(v).lower() for v in df.iloc[i] if pd.notna(v))
+                if any(kw in row_text for kw in ['description', 'material', 'item', 'product', 'qty', 'quantity', 'amount', 'unit', 'price', 'total', 'emission', 'factor', 'scope']):
+                    header_row = i
+                    break
+
+            parts.append(f"## Sheet: {sheet_name}")
+
+            if header_row is not None:
+                # Use detected header row
+                header = df.iloc[header_row].tolist()
+                data = df.iloc[header_row + 1:].copy()
+                data.columns = header
+                data = data.dropna(how='all')
+                parts.append(data.to_string(index=False))
+            else:
+                # No header found — dump all non-empty rows
+                for i in range(len(df)):
+                    row_vals = [str(v) for v in df.iloc[i] if pd.notna(v)]
+                    if row_vals:
+                        parts.append(' | '.join(row_vals))
+            parts.append("")
+        return "\n".join(parts)
+    except Exception as e:
+        raise RuntimeError(f"Excel extraction error: {e}")
+
+
+@app.post("/api/analyze")
+async def analyze_file(file: UploadFile = File(...)):
+    """Upload PDF or Excel, extract text, run AI carbon audit, ingest to graph."""
+    fname = (file.filename or "").lower()
+    if not fname:
+        raise HTTPException(400, "No file provided")
+
+    is_pdf = fname.endswith(".pdf")
+    is_excel = fname.endswith((".xlsx", ".xls", ".csv"))
+    if not is_pdf and not is_excel:
+        raise HTTPException(400, "Only PDF and Excel (.xlsx, .xls, .csv) files are accepted")
+
+    suffix = ".pdf" if is_pdf else (".csv" if fname.endswith(".csv") else ".xlsx")
     tmp_path = None
     try:
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(await file.read())
             tmp_path = tmp.name
 
-        raw_text = extract_text_from_pdf(tmp_path)
+        # Extract text based on file type
+        if is_excel:
+            raw_text = _extract_text_from_excel(tmp_path)
+        else:
+            raw_text = extract_text_from_pdf(tmp_path)
+
         if not raw_text.strip():
-            raise HTTPException(422, "No text extracted. The PDF may be scanned/image-based.")
+            raise HTTPException(422, "No text extracted. The file may be empty.")
 
         analysis_raw = analyze_enterprise_carbon(raw_text)
         if not analysis_raw:
@@ -207,6 +259,46 @@ async def similar_audits(materials: str = Query(...)):
 
 # ─── Entry Point ────────────────────────────────────────────────
 
+def _merge_duplicate_energy(energies: list[dict]) -> list[dict]:
+    """Merge energy items that are variations of the same type (e.g. Server Operation + Switch Operation → Electricity)."""
+    if len(energies) <= 1:
+        return energies
+
+    # Group by base energy type
+    groups: dict[str, list[dict]] = {}
+    for e in energies:
+        etype = e.get("type", "").lower()
+        # Normalize: extract base type
+        if any(kw in etype for kw in ['electricity', 'grid', 'power', 'kwh']):
+            base = 'Electricity'
+        elif any(kw in etype for kw in ['diesel', 'fuel', 'gasoline']):
+            base = 'Diesel'
+        elif any(kw in etype for kw in ['natural gas', 'lpg', 'lng']):
+            base = 'Natural Gas'
+        else:
+            base = e.get("type", "Energy")
+        groups.setdefault(base, []).append(e)
+
+    merged = []
+    for base, items in groups.items():
+        if len(items) == 1:
+            merged.append(items[0])
+        else:
+            # Sum usage, keep first EF, merge notes
+            total_usage = sum(e.get("usage", 0) for e in items)
+            ef = items[0].get("emission_factor", 0)
+            unit = items[0].get("unit", "kWh")
+            merged.append({
+                "type": f"{base} (combined)",
+                "usage": total_usage,
+                "unit": unit,
+                "emission_factor": ef,
+                "note": f"Source: Combined from {len(items)} energy items — {items[0].get('note', '')}",
+            })
+            logger.info(f"Merged {len(items)} energy items → '{base} (combined)', total usage: {total_usage}")
+    return merged
+
+
 def _enrich_notes(data: dict) -> None:
     """Enrich audit items with verified emission factors and trusted source URLs.
 
@@ -216,13 +308,16 @@ def _enrich_notes(data: dict) -> None:
       2. If a real EF value is returned, update emission_factor + note source.
       3. Always ensure note has a trusted URL (no broken links).
 
-    Energy items use fixed known EFs and are not sent to Serper.
+    Energy items are merged if duplicates, then use fixed known EFs.
     """
     from app.search import clean_note, search_emission_factor, get_trusted_source
 
     materials  = data.get("materials", [])
-    energies   = data.get("energy", [])
+    energies   = _merge_duplicate_energy(data.get("energy", []))
     transports = data.get("transport", [])
+
+    # Update energy in data with merged version
+    data["energy"] = energies
 
     logger.info(
         f"Enriching: {len(materials)} materials, "

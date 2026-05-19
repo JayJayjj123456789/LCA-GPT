@@ -15,14 +15,33 @@ export default function PdfUploader({ onAnalyzed }: Props) {
   const [currentFile, setCurrentFile] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const getFileType = (f: File): 'pdf' | 'excel' | 'csv' => {
+    if (f.type === 'application/pdf') return 'pdf'
+    if (f.type === 'text/csv' || f.name.toLowerCase().endsWith('.csv')) return 'csv'
+    return 'excel'
+  }
+
+  const fileTypeCounts = {
+    pdf: files.filter(f => getFileType(f) === 'pdf').length,
+    excel: files.filter(f => getFileType(f) === 'excel').length,
+    csv: files.filter(f => getFileType(f) === 'csv').length,
+  }
+
+  const ACCEPTED = [
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'text/csv',
+  ]
+
   const addFiles = (newFiles: FileList | null) => {
     if (!newFiles) return
-    const pdfs = Array.from(newFiles).filter(f => f.type === 'application/pdf')
-    if (pdfs.length === 0) {
-      setError('Only PDF files are accepted')
+    const accepted = Array.from(newFiles).filter(f => ACCEPTED.includes(f.type))
+    if (accepted.length === 0) {
+      setError('Only PDF and Excel (.xlsx, .xls, .csv) files are accepted')
       return
     }
-    setFiles(prev => [...prev, ...pdfs])
+    setFiles(prev => [...prev, ...accepted])
     setError(null)
   }
 
@@ -87,9 +106,26 @@ export default function PdfUploader({ onAnalyzed }: Props) {
             <h3 className="text-section-label">Data Ingestion</h3>
           </div>
           {files.length > 0 && (
-            <span className="text-xs text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-full">
-              {files.length} file{files.length > 1 ? 's' : ''} · {(totalSize / 1024).toFixed(0)} KB
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-full">
+                {files.length} file{files.length > 1 ? 's' : ''} · {(totalSize / 1024).toFixed(0)} KB
+              </span>
+              {fileTypeCounts.pdf > 0 && (
+                <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(185,204,176,0.15)', color: '#b9ccb0' }}>
+                  {fileTypeCounts.pdf} PDF
+                </span>
+              )}
+              {fileTypeCounts.excel > 0 && (
+                <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(139,157,131,0.15)', color: '#8b9d83' }}>
+                  {fileTypeCounts.excel} Excel
+                </span>
+              )}
+              {fileTypeCounts.csv > 0 && (
+                <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(198,107,61,0.15)', color: '#c66b3d' }}>
+                  {fileTypeCounts.csv} CSV
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -111,7 +147,7 @@ export default function PdfUploader({ onAnalyzed }: Props) {
             <input
               ref={inputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.xlsx,.xls,.csv"
               multiple
               onChange={(e) => addFiles(e.target.files)}
               className="hidden"
@@ -119,24 +155,53 @@ export default function PdfUploader({ onAnalyzed }: Props) {
 
             {files.length > 0 ? (
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-primary-container/20 flex items-center justify-center mx-auto">
-                  <span className="material-symbols-outlined text-primary" style={{ fontSize: 20, fontVariationSettings: "'FILL' 1" }}>
-                    picture_as_pdf
-                  </span>
+                <div className="flex justify-center gap-3">
+                  {fileTypeCounts.pdf > 0 && (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(185,204,176,0.15)' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#b9ccb0', fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
+                      </div>
+                      <span className="text-[10px] text-on-surface-variant">{fileTypeCounts.pdf} PDF</span>
+                    </div>
+                  )}
+                  {fileTypeCounts.excel > 0 && (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(139,157,131,0.15)' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#8b9d83', fontVariationSettings: "'FILL' 1" }}>table_chart</span>
+                      </div>
+                      <span className="text-[10px] text-on-surface-variant">{fileTypeCounts.excel} Excel</span>
+                    </div>
+                  )}
+                  {fileTypeCounts.csv > 0 && (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(198,107,61,0.15)' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#c66b3d', fontVariationSettings: "'FILL' 1" }}>description</span>
+                      </div>
+                      <span className="text-[10px] text-on-surface-variant">{fileTypeCounts.csv} CSV</span>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
-                  {files.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 bg-surface-container/50 rounded-lg px-3 py-1.5">
-                      <span className="text-xs text-on-surface truncate max-w-[180px]">{f.name}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); removeFile(i) }}
-                        className="text-on-surface-variant/50 hover:text-error transition-colors cursor-pointer shrink-0"
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
-                      </button>
-                    </div>
-                  ))}
+                  {files.map((f, i) => {
+                    const ftype = getFileType(f)
+                    const icon = ftype === 'pdf' ? 'picture_as_pdf' : ftype === 'excel' ? 'table_chart' : 'description'
+                    const iconColor = ftype === 'pdf' ? '#b9ccb0' : ftype === 'excel' ? '#8b9d83' : '#c66b3d'
+                    return (
+                      <div key={i} className="flex items-center justify-between gap-2 bg-surface-container/50 rounded-lg px-3 py-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="material-symbols-outlined shrink-0" style={{ fontSize: 14, color: iconColor, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                          <span className="text-xs text-on-surface truncate">{f.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeFile(i) }}
+                          className="text-on-surface-variant/50 hover:text-error transition-colors cursor-pointer shrink-0"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
                 <p className="text-xs text-on-surface-variant">
                   Drop more files or <span className="text-primary font-semibold">browse</span> to add
@@ -155,7 +220,7 @@ export default function PdfUploader({ onAnalyzed }: Props) {
                     <span className="text-primary font-semibold">browse</span>
                   </p>
                   <p className="text-xs text-on-surface-variant/50 mt-1">
-                    Upload multiple files — PO · Spec Sheet · Sustainability Report · BOM
+                    Upload multiple files — PDF · Excel · CSV · BOM
                   </p>
                 </div>
                 <div className="flex justify-center gap-2">

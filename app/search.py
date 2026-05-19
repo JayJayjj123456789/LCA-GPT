@@ -175,38 +175,70 @@ _AI_GENERIC_URLS = [
 ]
 
 
+def _is_homepage_url(url: str) -> bool:
+    """Check if URL is just a domain root / homepage (not a specific page)."""
+    clean = url.replace("https://", "").replace("http://", "").replace("www.", "")
+    parts = clean.rstrip("/").split("/")
+    return len(parts) <= 2
+
+
 def clean_note(note: str, name: str, category: str = "material") -> str:
-    """Ensure a note field has a REAL, trusted source URL.
-
-    Strategy:
-    1. If the note contains a URL that AI copied from prompt (generic) → replace with Serper result.
-    2. If the note has a real specific URL (not in generic list) → keep as-is.
-    3. If no URL → search Serper.
-    4. If Serper fails → fall back to category default.
-    """
+    """Ensure a note field has REAL, trusted source URLs. May return multiple sources."""
     existing_url = _URL_RE.search(note)
+    existing_sources = _extract_sources_from_note(note)
 
-    # If URL is one of the generic AI-copied ones → always replace with Serper
+    # Check if existing sources are already specific (not generic homepages)
+    has_specific = False
     if existing_url:
         url = existing_url.group()
-        is_generic = any(url.startswith(g) or g.startswith(url) for g in _AI_GENERIC_URLS)
-        if not is_generic:
-            return note  # real specific URL, keep it
-        logger.info(f"Replacing generic AI URL for '{name}': {url}")
+        is_generic_domain = any(url.startswith(g) for g in _AI_GENERIC_URLS)
+        is_homepage = _is_homepage_url(url)
+        if not is_generic_domain and not is_homepage:
+            has_specific = True
 
-    # Search Serper for a real source (bypass fallback DB)
+    # Search Serper for additional real sources
+    serper_sources = []
     if SERPER_API_KEY and name:
-        logger.info(f"Serper: searching source for '{name}'...")
-        serper_source = _serper_find_source(name)
-        if serper_source:
-            return serper_source
+        serper_sources = _serper_find_sources(name, max_results=3)
 
-    # Fallback to category default
+    # Merge: keep existing specific sources + add new Serper sources
+    all_sources = []
+    seen_urls = set()
+
+    # Add existing sources first
+    for src in existing_sources:
+        url_match = _URL_RE.search(src)
+        if url_match:
+            url = url_match.group()
+            if url not in seen_urls:
+                seen_urls.add(url)
+                all_sources.append(src)
+
+    # Add Serper sources
+    for src in serper_sources:
+        url_match = _URL_RE.search(src)
+        if url_match:
+            url = url_match.group()
+            if url not in seen_urls:
+                seen_urls.add(url)
+                all_sources.append(src)
+
+    if all_sources:
+        return " | ".join(all_sources)
+
+    # Fallback
     return get_trusted_source(category)
 
 
-# ── Emission Factor Lookup (Serper used HERE only) ────────────────────────────
-
+def _extract_sources_from_note(note: str) -> list[str]:
+    """Extract individual source strings from a note (split by ' | ' or ' — ')."""
+    if not note:
+        return []
+    # Split by common separators
+    parts = note.split(' | ')
+    if len(parts) == 1:
+        parts = note.split(' — ')
+    return [p.strip() for p in parts if p.strip()]
 def search_emission_factor(material_name: str) -> EfResult | None:
     """Search for the latest emission factor of a material.
 
@@ -234,14 +266,38 @@ def search_emission_factor(material_name: str) -> EfResult | None:
     return None
 
 
-def _serper_find_source(material_name: str) -> str | None:
-    """Search Serper for a real source URL for a material. Returns source string or None."""
+def _build_serper_query(material_name: str) -> str:
+    """Build a targeted Serper query based on material type."""
+    name_lower = material_name.lower()
+
+    # Electronics / IT → use "carbon footprint" + "per unit"
+    if any(kw in name_lower for kw in ['laptop', 'computer', 'server', 'monitor', 'display', 'tablet', 'ipad', 'phone', 'smartphone', 'switch', 'router', 'firewall', 'ups', 'pdu', 'access point', 'ap ', 'cisco', 'dell', 'hp ', 'lenovo', 'apple', 'sony', 'netapp', 'fortinet', 'meraki']):
+        return f'"{material_name}" carbon footprint lifecycle CO2e per unit kg'
+
+    # Software / SaaS → use "carbon footprint per user"
+    if any(kw in name_lower for kw in ['license', 'subscription', 'saas', 'software', 'microsoft 365', 'office 365', 'adobe', 'cloud']):
+        return f'"{material_name}" carbon footprint per user per year CO2e'
+
+    # Transport → use "emission factor per km"
+    if any(kw in name_lower for kw in ['freight', 'transport', 'shipping', 'delivery', 'truck', 'sea freight', 'air freight', 'road']):
+        return f'"{material_name}" emission factor kgCO2e per km GLEC'
+
+    # Energy → use "emission factor kWh"
+    if any(kw in name_lower for kw in ['electricity', 'grid', 'diesel', 'gas', 'fuel', 'energy', 'power']):
+        return f'"{material_name}" emission factor kgCO2e per kWh'
+
+    # Default: materials / chemicals / raw
+    return f'"{material_name}" emission factor kgCO2e per kg Ecoinvent'
+
+
+def _serper_find_sources(material_name: str, max_results: int = 3) -> list[str]:
+    """Search Serper for real source URLs. Returns list of source strings."""
     import requests
 
-    query = f"{material_name} emission factor kgCO2e per kg"
+    query = _build_serper_query(material_name)
     url = "https://google.serper.dev/search"
     headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
-    payload = {"q": query, "num": 5}
+    payload = {"q": query, "num": max_results + 3}
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=15)
@@ -250,32 +306,34 @@ def _serper_find_source(material_name: str) -> str | None:
         organic = data.get("organic", [])
 
         if not organic:
-            return None
+            return []
 
         logger.info(f"Serper: {len(organic)} results for '{material_name}'")
 
-        # Try to find a result with EF data
+        sources = []
+        seen_domains = set()
         for item in organic:
-            text = f"{item.get('title', '')} {item.get('snippet', '')}"
-            match = _EF_PATTERN.search(text)
-            if match:
-                source_url = item.get("link", "")
-                source_title = item.get("title", "")
-                if source_url:
-                    logger.info(f"Serper found EF source for '{material_name}': {source_url}")
-                    return f"Source: {source_title} — {source_url}"
+            source_url = item.get("link", "")
+            source_title = item.get("title", "")
+            if not source_url:
+                continue
+            # Deduplicate by domain to get diverse sources
+            from urllib.parse import urlparse
+            domain = urlparse(source_url).netloc.replace("www.", "")
+            if domain in seen_domains:
+                continue
+            seen_domains.add(domain)
+            sources.append(f"{source_title} — {source_url}")
+            if len(sources) >= max_results:
+                break
 
-        # No EF parsed — return first result as source
-        first = organic[0]
-        source_url = first.get("link", "")
-        source_title = first.get("title", "")
-        if source_url:
-            logger.info(f"Serper no EF parsed, using first result for '{material_name}': {source_url}")
-            return f"Source: {source_title} — {source_url}"
+        if sources:
+            logger.info(f"Serper found {len(sources)} source(s) for '{material_name}'")
+        return sources
 
     except Exception as e:
         logger.error(f"Serper source search failed: {e}")
-    return None
+    return []
 
 
 def _serper_search(material_name: str) -> EfResult | None:

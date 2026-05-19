@@ -107,34 +107,55 @@ function TableShell({ headers, children }: { headers: string[]; children: React.
   )
 }
 
-/* ── Source cell: renders URLs as clickable links ────────────────────────── */
+/* ── Source cell: renders single or multiple clickable source links ──────── */
 function SourceCell({ note }: { note: string }) {
   if (!note) return <span className="text-on-surface-variant/30">—</span>
 
-  // Extract URL from note text (e.g. "Source: ... — https://..." or raw URL)
-  const urlMatch = note.match(/https?:\/\/[^\s]+/)
-  const url = urlMatch ? urlMatch[0] : null
-  // Display text: everything before the URL, or the full note if no URL
-  const displayText = url ? note.replace(url, '').replace(/[—\-–]\s*$/, '').trim() : note
+  // Split note into individual sources (separated by " | ")
+  const sourceParts = note.split(' | ').map(s => s.trim()).filter(Boolean)
 
-  if (url) {
-    return (
-      <div className="flex flex-col gap-0.5">
-        {displayText && <span className="text-on-surface-variant/60 text-xs leading-tight">{displayText}</span>}
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs underline underline-offset-2 decoration-primary/40 hover:decoration-primary text-primary/80 hover:text-primary transition-colors truncate max-w-[220px] inline-block"
-          title={url}
-        >
-          {url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
-        </a>
-      </div>
-    )
+  if (sourceParts.length === 0) {
+    return <span className="text-on-surface-variant/60 text-xs">{note}</span>
   }
 
-  return <span className="text-on-surface-variant/60 text-xs">{note}</span>
+  // Parse each part into { title, url }
+  const sources: { title: string; url: string }[] = []
+  for (const part of sourceParts) {
+    const urlMatch = part.match(/https?:\/\/\S+/)
+    if (urlMatch) {
+      const url = urlMatch[0].replace(/[)\],;]+$/, '') // strip trailing punctuation
+      const title = part.replace(url, '').replace(/[—\-–:]\s*$/, '').trim() || url
+      sources.push({ title, url })
+    }
+  }
+
+  if (sources.length === 0) {
+    return <span className="text-on-surface-variant/60 text-xs">{note}</span>
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {sources.map((src, i) => (
+        <div key={i} className="flex items-start gap-1.5">
+          <span className="text-[10px] text-on-surface-variant/40 mt-0.5 shrink-0">{i + 1}.</span>
+          <div className="min-w-0">
+            {src.title && src.title !== src.url && (
+              <span className="text-on-surface-variant/60 text-xs leading-tight block truncate max-w-[200px]">{src.title}</span>
+            )}
+            <a
+              href={src.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs underline underline-offset-2 decoration-primary/40 hover:decoration-primary text-primary/80 hover:text-primary transition-colors truncate max-w-[200px] inline-block"
+              title={src.url}
+            >
+              {src.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /* ── Row helper ─────────────────────────────────────────────────────────── */

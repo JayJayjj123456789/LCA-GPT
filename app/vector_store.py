@@ -87,7 +87,10 @@ def _embed_text(text: str) -> list[float]:
 def _pinecone_upsert(record: dict) -> None:
     """Upsert a record to Pinecone index with a real embedding."""
     try:
-        from pinecone import Pinecone
+        try:
+            from pinecone import Pinecone
+        except ImportError:
+            from pinecone_client import Pinecone
         pc = Pinecone(api_key=PINECONE_API_KEY)
         index = pc.Index(PINECONE_INDEX)
 
@@ -117,7 +120,10 @@ def _pinecone_upsert(record: dict) -> None:
 def _pinecone_search(materials: list[str], top_k: int) -> list[dict]:
     """Search Pinecone for similar audits using embedding similarity."""
     try:
-        from pinecone import Pinecone
+        try:
+            from pinecone import Pinecone
+        except ImportError:
+            from pinecone_client import Pinecone
         pc = Pinecone(api_key=PINECONE_API_KEY)
         index = pc.Index(PINECONE_INDEX)
 

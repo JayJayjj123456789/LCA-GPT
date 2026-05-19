@@ -26,60 +26,73 @@ def analyze_enterprise_carbon(text: str) -> str | None:
         base_url="https://openrouter.ai/api/v1",
         api_key=OPENROUTER_API_KEY,
     )
-    content_text = text[:6000]
+    content_text = text[:8000]  # Increased for larger invoices/BOMs
     system_prompt = (
-        "You are an Expert LCA Sustainability Consultant. Analyze supply chain carbon footprint data strictly. "
-        "Methodology: 1. Materials: TGO/Ecoinvent 3.9 2. Energy: Thailand Grid (~0.499 kgCO2e/kWh) 3. Transport: GLEC Framework v3. "
+        "You are an Expert LCA Sustainability Consultant. Your task is to extract carbon footprint data from ANY supply chain document — invoices, purchase orders, BOMs, receipts, sustainability reports, etc. "
+        "CRITICAL: You MUST always return materials/energy/transport with real data. NEVER return empty arrays if there are line items in the document. "
+        "INVOICE RULE: For invoices/receipts, map EVERY line item to a material entry. Use Qty × Unit as the amount. "
+        "ELECTRONICS/IT RULE: For electronics, use per-unit lifecycle CO2e (not weight-based). Known per-unit EF benchmarks (kgCO2e/unit): "
+        "Laptop/Notebook: 300-400 kgCO2e/unit (use 350), "
+        "Tablet/iPad: 80-120 kgCO2e/unit (use 100), "
+        "Desktop PC: 400-600 kgCO2e/unit (use 500), "
+        "Monitor/Display 27-55': 200-350 kgCO2e/unit (use 250), "
+        "Large Display 75'+: 400-600 kgCO2e/unit (use 500), "
+        "Smartphone: 60-80 kgCO2e/unit (use 70), "
+        "Network Switch/AP: 50-100 kgCO2e/unit (use 75), "
+        "Server/PDU: 1000-2000 kgCO2e/unit (use 1500), "
+        "Printer/MFP: 150-300 kgCO2e/unit (use 200), "
+        "Office Chair: 50-80 kgCO2e/unit (use 65), "
+        "Sit-Stand Desk: 80-150 kgCO2e/unit (use 120), "
+        "Software License (SaaS): estimate 0.1-0.5 kgCO2e/user/year for cloud energy (use 0.2). "
+        "For non-electronics materials use mass-based EF in kg. "
+        "Methodology: 1. Materials: Ecoinvent 3.9 / product LCA studies 2. Energy: Thailand Grid 0.499 kgCO2e/kWh 3. Transport: GLEC Framework v3. "
         "CRITICAL RULE: Every 'note' field MUST include a REAL, VERIFIABLE source URL. "
         "Format: 'Source: [Database] — https://[url]'. "
         "ONLY use URLs from the following verified working domains: "
-        # หมวด 1: มาตรฐานสากล
         "GHG Protocol: https://ghgprotocol.org/, "
         "IPCC AR6 WG3: https://www.ipcc.ch/report/ar6/wg3/, "
-        "ISO Standards: https://www.iso.org/, "
-        # หมวด 2: ฐานข้อมูลคาร์บอนโลก
         "Ecoinvent: https://ecoinvent.org/database/, "
         "Climatiq: https://climatiq.io/, "
-        # หมวด 3: ไทย
+        "Dell LCA: https://www.dell.com/en-us/dt/corporate/social-impact/advancing-sustainability/climate-action/product-carbon-footprints.htm, "
+        "Apple Environmental Report: https://www.apple.com/environment/, "
+        "HP Sustainability: https://h20195.www2.hp.com/v2/getpdf.aspx/c08436529.pdf, "
         "TGO Thailand: https://www.tgo.or.th, "
-        "TGO Carbon Label: https://thaicarbonlabel.tgo.or.th/, "
-        "DIW Thailand: https://www.diw.go.th/, "
-        # หมวด 4: พลังงาน
         "IEA Emissions Factors: https://www.iea.org/data-and-statistics/data-product/emissions-factors-2023, "
         "EGAT Thailand: https://www.egat.co.th/, "
-        # หมวด 5: โลจิสติกส์ — NOTE: use smartfreightcentre.org NOT glec.org
-        "GLEC Framework (Smart Freight Centre): https://www.smartfreightcentre.org/en/glec/, "
-        # หมวด 6: ESG
-        "SET Sustainability: https://www.setsustainability.com/, "
-        # หมวด 9: กฎระเบียบยุโรป
-        "European Commission: https://ec.europa.eu/, "
-        "European Platform LCA: https://eplca.jrc.ec.europa.eu/, "
-        # รัฐบาลอื่น
-        "EPA GHG Hub: https://www.epa.gov/climateleadership/ghg-emission-factors-hub, "
-        "UK Gov BEIS: https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting. "
-        "NEVER use glec.org — it is not a real source. Always use smartfreightcentre.org/en/glec/ for transport. "
-        "NEVER fabricate or guess URLs. Return clean JSON only. No markdown."
+        "GLEC Framework: https://www.smartfreightcentre.org/en/glec/, "
+        "EPA GHG Hub: https://www.epa.gov/climateleadership/ghg-emission-factors-hub. "
+        "NEVER return empty materials/energy/transport if there are line items. Return clean JSON only. No markdown."
     )
     user_prompt = f"""
-    Analyze the following document for a complete Carbon Footprint / LCA audit.
-    IMPORTANT: The 'note' field for EVERY item MUST follow this exact format:
+    Analyze the following supply chain document for a complete Carbon Footprint / LCA audit.
+
+    Document type detection rules:
+    - If it contains invoice lines with Qty/Amount → map EVERY line item to a material
+    - If it's electronics/IT items → use per-unit lifecycle CO2e (unit = "pcs" or "unit")
+    - If it has energy consumption data → fill the energy array
+    - If it mentions shipping/delivery/logistics → fill transport array
+
+    MANDATORY: The 'note' field for EVERY item MUST follow this exact format:
     'Source: [Database Name] — https://[real-url-to-source]'
 
     Required JSON structure:
     {{
-      "project_info": {{ "name": "Descriptive Project Name", "supplier": "Supplier/Company Name" }},
+      "project_info": {{
+        "name": "Project name derived from document (e.g. invoice title or company name)",
+        "supplier": "Supplier/vendor company name"
+      }},
       "materials": [
         {{
-          "name": "Material Name",
-          "amount": 0.0,
-          "unit": "kg",
-          "emission_factor": 0.0,
-          "note": "Source: Ecoinvent 3.9 — https://ecoinvent.org/database/"
+          "name": "Product/Material name from invoice line",
+          "amount": 120.0,
+          "unit": "pcs",
+          "emission_factor": 350.0,
+          "note": "Source: HP Product Carbon Footprint — https://h20195.www2.hp.com/v2/getpdf.aspx/c08436529.pdf"
         }}
       ],
       "energy": [
         {{
-          "type": "Energy Type",
+          "type": "Electricity (estimated operational use)",
           "usage": 0.0,
           "unit": "kWh",
           "emission_factor": 0.499,
@@ -88,21 +101,29 @@ def analyze_enterprise_carbon(text: str) -> str | None:
       ],
       "transport": [
         {{
-          "method": "Transport Mode",
+          "method": "Road Freight (estimated delivery)",
           "distance": 0.0,
           "unit": "km",
-          "emission_factor": 0.0,
+          "emission_factor": 0.1,
           "note": "Source: GLEC Framework v3 — https://www.smartfreightcentre.org/en/glec/"
         }}
       ],
       "total_estimated_co2": 0.0,
       "optimization_score": 0,
       "recommendations": [
-        "Specific actionable recommendation 1 with quantified impact",
-        "Specific actionable recommendation 2 with quantified impact"
+        "Specific actionable recommendation with quantified impact"
       ],
       "summary": "Concise 2-3 sentence executive summary of findings"
     }}
+
+    Rules:
+    - EVERY invoice line item → one materials entry (do not skip any)
+    - Use the Qty column as 'amount'
+    - For software/SaaS licenses: amount = number of users, unit = 'license', EF = 0.2 kgCO2e/license
+    - For services with no physical product: still create an entry using estimated resource/energy equivalents
+    - Calculate total_estimated_co2 = sum(amount × emission_factor) for all items
+    - optimization_score = 0-100 based on sustainability of purchasing choices
+    - If transport/shipping info not explicit, estimate based on typical Bangkok delivery
 
     Document text:
     {content_text}

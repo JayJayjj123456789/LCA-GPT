@@ -72,7 +72,7 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-  font-size: 16px;
+  font-size: 28px;
 }
 
 body {
@@ -89,6 +89,48 @@ body {
 /* ─── Typography Utilities ───────────────────────────────────────────────── */
 .font-serif    { font-family: 'Literata', Georgia, serif; }
 .font-sans     { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+
+/* ─── Bigger UI Scale ──────────────────────────────────────────────────── */
+.text-section-label {
+  font-size: 24px !important;
+  letter-spacing: 0.06em !important;
+}
+
+table {
+  font-size: 22px !important;
+}
+
+table th {
+  font-size: 20px !important;
+}
+
+button {
+  font-size: 22px !important;
+}
+
+input, textarea, select {
+  font-size: 24px !important;
+}
+
+/* Sidebar */
+nav button, nav a {
+  font-size: 22px !important;
+}
+
+/* Metric values */
+.metric-value, [class*="text-4xl"], [class*="text-5xl"] {
+  font-size: 4.5rem !important;
+}
+
+/* Card titles */
+h3, .card-title {
+  font-size: 28px !important;
+}
+
+/* Page title */
+h1, h2 {
+  font-size: 42px !important;
+}
 
 .text-display-lg {
   font-family: 'Literata', Georgia, serif;
