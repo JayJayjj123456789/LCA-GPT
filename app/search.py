@@ -27,6 +27,79 @@ TRUSTED_SOURCES = {
     "transport": "Source: GLEC Framework v3 — https://www.smartfreightcentre.org/en/glec/",
 }
 
+# ── Specific fallback sources by material type ───────────────────────────────
+# Used when Serper returns no results — gives a REAL specific page, not homepage
+_SPECIFIC_FALLBACK_SOURCES: dict[str, str] = {
+    # Metals
+    "steel":        "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "aluminum":     "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "copper":       "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "nickel":       "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "zinc":         "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    # Plastics
+    "plastic":      "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "pet":          "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "hdpe":         "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    # Electronics — per unit LCA
+    "laptop":       "Source: Dell Product Carbon Footprints — https://www.dell.com/en-us/dt/corporate/social-impact/advancing-sustainability/climate-action/product-carbon-footprints.htm",
+    "computer":     "Source: Dell Product Carbon Footprints — https://www.dell.com/en-us/dt/corporate/social-impact/advancing-sustainability/climate-action/product-carbon-footprints.htm",
+    "server":       "Source: Dell Product Carbon Footprints — https://www.dell.com/en-us/dt/corporate/social-impact/advancing-sustainability/climate-action/product-carbon-footprints.htm",
+    "tablet":       "Source: Apple Environmental Progress Report — https://www.apple.com/environment/",
+    "ipad":         "Source: Apple Environmental Progress Report — https://www.apple.com/environment/",
+    "monitor":      "Source: HP Product Carbon Footprints — https://h20195.www2.hp.com/v2/getpdf.aspx/c08436529.pdf",
+    "display":      "Source: HP Product Carbon Footprints — https://h20195.www2.hp.com/v2/getpdf.aspx/c08436529.pdf",
+    "switch":       "Source: Cisco Product Sustainability — https://www.cisco.com/c/en/us/about/csr/esg-hub/product-sustainability.html",
+    "router":       "Source: Cisco Product Sustainability — https://www.cisco.com/c/en/us/about/csr/esg-hub/product-sustainability.html",
+    "firewall":     "Source: Fortinet Environmental — https://www.fortinet.com/corporate/about-us/environmental-social-governance",
+    "ups":          "Source: APC Sustainability — https://www.se.com/ww/en/about-us/sustainability/",
+    "pdu":          "Source: APC Sustainability — https://www.se.com/ww/en/about-us/sustainability/",
+    "access point": "Source: Cisco Product Sustainability — https://www.cisco.com/c/en/us/about/csr/esg-hub/product-sustainability.html",
+    "meraki":       "Source: Cisco Product Sustainability — https://www.cisco.com/c/en/us/about/csr/esg-hub/product-sustainability.html",
+    "netapp":       "Source: NetApp ESG — https://www.netapp.com/company/corporate-responsibility/",
+    "storage":      "Source: NetApp ESG — https://www.netapp.com/company/corporate-responsibility/",
+    # Software / SaaS
+    "license":      "Source: GHG Protocol Scope 3 Guidance — https://ghgprotocol.org/scope-3-technical-calculation-guidance",
+    "subscription": "Source: GHG Protocol Scope 3 Guidance — https://ghgprotocol.org/scope-3-technical-calculation-guidance",
+    "software":     "Source: GHG Protocol Scope 3 Guidance — https://ghgprotocol.org/scope-3-technical-calculation-guidance",
+    "saas":         "Source: GHG Protocol Scope 3 Guidance — https://ghgprotocol.org/scope-3-technical-calculation-guidance",
+    "microsoft 365":"Source: Microsoft Sustainability — https://www.microsoft.com/en-us/sustainability",
+    # Energy
+    "electricity":  "Source: TGO Thailand Grid 2023 — https://tgo.or.th/en/emission-factor/",
+    "grid":         "Source: TGO Thailand Grid 2023 — https://tgo.or.th/en/emission-factor/",
+    "diesel":       "Source: UK Gov BEIS 2024 — https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting",
+    "natural gas":  "Source: IPCC AR6 WG3 — https://www.ipcc.ch/report/ar6/wg3/",
+    # Transport
+    "truck":        "Source: GLEC Framework v3 — https://smart-freight-centre.org/glec-framework/",
+    "freight":      "Source: GLEC Framework v3 — https://smart-freight-centre.org/glec-framework/",
+    "sea freight":  "Source: IMO GHG Strategy — https://www.imo.org/en/MediaCentre/HotTopics/Pages/Reducing-greenhouse-gas-emissions-from-ships.aspx",
+    "air freight":  "Source: IATA Carbon Offset — https://www.iata.org/en/programs/environment/carbon-offset/",
+    "road":         "Source: GLEC Framework v3 — https://smart-freight-centre.org/glec-framework/",
+    # Construction
+    "concrete":     "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "glass":        "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "wood":         "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "cardboard":    "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    # Furniture
+    "desk":         "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "chair":        "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "furniture":    "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    # Food
+    "food":         "Source: Poore & Nemecek (2018) — https://science.sciencemag.org/content/360/6392/987",
+    "rice":         "Source: Poore & Nemecek (2018) — https://science.sciencemag.org/content/360/6392/987",
+    "bread":        "Source: Poore & Nemecek (2018) — https://science.sciencemag.org/content/360/6392/987",
+    "coffee":       "Source: Poore & Nemecek (2018) — https://science.sciencemag.org/content/360/6392/987",
+    "cookies":      "Source: Poore & Nemecek (2018) — https://science.sciencemag.org/content/360/6392/987",
+    "soap":         "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    # Paper / stationery
+    "paper":        "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "stationery":   "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "office supplies": "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    # Rubber / chemicals
+    "rubber":       "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "carbon fiber": "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+    "titanium":     "Source: Ecoinvent 3.9 — https://ecoinvent.org/the-ecoinvent-database/data-releases/ecoinvent-version-3/",
+}
+
 # ── Trusted URL allowlist — 9 categories (substring match) ───────────────────
 # If an existing note URL contains any of these, it is valid → keep it.
 _TRUSTED_URL_PATTERNS = [
@@ -149,8 +222,14 @@ def _note_has_trusted_url(note: str) -> bool:
     return any(pat in url for pat in _TRUSTED_URL_PATTERNS)
 
 
-def get_trusted_source(category: str) -> str:
-    """Return the canonical trusted source string for a category."""
+def get_trusted_source(category: str, material_name: str = "") -> str:
+    """Return a specific trusted source URL. Falls back to category default."""
+    if material_name:
+        name_lower = material_name.lower()
+        # Check specific fallback sources first
+        for key, url in _SPECIFIC_FALLBACK_SOURCES.items():
+            if key in name_lower:
+                return url
     return TRUSTED_SOURCES.get(category, TRUSTED_SOURCES["material"])
 
 
@@ -183,51 +262,33 @@ def _is_homepage_url(url: str) -> bool:
 
 
 def clean_note(note: str, name: str, category: str = "material") -> str:
-    """Ensure a note field has REAL, trusted source URLs. May return multiple sources."""
-    existing_url = _URL_RE.search(note)
-    existing_sources = _extract_sources_from_note(note)
+    """Ensure a note field has REAL, trusted source URLs from Serper.
 
-    # Check if existing sources are already specific (not generic homepages)
-    has_specific = False
-    if existing_url:
-        url = existing_url.group()
-        is_generic_domain = any(url.startswith(g) for g in _AI_GENERIC_URLS)
-        is_homepage = _is_homepage_url(url)
-        if not is_generic_domain and not is_homepage:
-            has_specific = True
-
-    # Search Serper for additional real sources
-    serper_sources = []
+    Strategy:
+    1. Always search Serper first for real sources.
+    2. If Serper finds results → use ONLY Serper results (discard AI generic URLs).
+    3. If Serper fails → use specific fallback from _SPECIFIC_FALLBACK_SOURCES.
+    4. Last resort → category default.
+    """
+    # Always search Serper first
     if SERPER_API_KEY and name:
         serper_sources = _serper_find_sources(name, max_results=3)
+        if serper_sources:
+            return " | ".join(serper_sources)
 
-    # Merge: keep existing specific sources + add new Serper sources
-    all_sources = []
-    seen_urls = set()
+    # Serper failed → use specific fallback
+    specific = get_trusted_source(category, name)
+    if specific and not _is_homepage_url(specific.split(" — ")[-1] if " — " in specific else specific):
+        return specific
 
-    # Add existing sources first
-    for src in existing_sources:
-        url_match = _URL_RE.search(src)
-        if url_match:
-            url = url_match.group()
-            if url not in seen_urls:
-                seen_urls.add(url)
-                all_sources.append(src)
+    # Last resort: try to find any URL in the existing note
+    existing_url = _URL_RE.search(note)
+    if existing_url:
+        url = existing_url.group()
+        if not _is_homepage_url(url):
+            return note
 
-    # Add Serper sources
-    for src in serper_sources:
-        url_match = _URL_RE.search(src)
-        if url_match:
-            url = url_match.group()
-            if url not in seen_urls:
-                seen_urls.add(url)
-                all_sources.append(src)
-
-    if all_sources:
-        return " | ".join(all_sources)
-
-    # Fallback
-    return get_trusted_source(category)
+    return get_trusted_source(category, name)
 
 
 def _extract_sources_from_note(note: str) -> list[str]:
@@ -266,74 +327,97 @@ def search_emission_factor(material_name: str) -> EfResult | None:
     return None
 
 
-def _build_serper_query(material_name: str) -> str:
-    """Build a targeted Serper query based on material type."""
+def _build_serper_queries(material_name: str) -> list[str]:
+    """Build multiple Serper queries from specific to broad."""
     name_lower = material_name.lower()
+    queries = []
 
-    # Electronics / IT → use "carbon footprint" + "per unit"
-    if any(kw in name_lower for kw in ['laptop', 'computer', 'server', 'monitor', 'display', 'tablet', 'ipad', 'phone', 'smartphone', 'switch', 'router', 'firewall', 'ups', 'pdu', 'access point', 'ap ', 'cisco', 'dell', 'hp ', 'lenovo', 'apple', 'sony', 'netapp', 'fortinet', 'meraki']):
-        return f'"{material_name}" carbon footprint lifecycle CO2e per unit kg'
+    # Electronics / IT
+    if any(kw in name_lower for kw in ['laptop', 'computer', 'server', 'monitor', 'display', 'tablet', 'ipad', 'phone', 'smartphone', 'switch', 'router', 'firewall', 'ups', 'pdu', 'access point', 'cisco', 'dell', 'hp ', 'lenovo', 'apple', 'sony', 'netapp', 'fortinet', 'meraki', 'epson', 'legrand', 'ergotron', 'steelcase']):
+        # Try specific product page first
+        queries.append(f'"{material_name}" carbon footprint kg CO2e')
+        # Broader: product type + LCA
+        short_name = material_name.split('(')[0].strip()  # Remove parenthetical details
+        queries.append(f'"{short_name}" lifecycle assessment CO2e kg')
+        # Even broader: manufacturer + product category
+        queries.append(f'{material_name.split()[0]} product carbon footprint database')
 
-    # Software / SaaS → use "carbon footprint per user"
-    if any(kw in name_lower for kw in ['license', 'subscription', 'saas', 'software', 'microsoft 365', 'office 365', 'adobe', 'cloud']):
-        return f'"{material_name}" carbon footprint per user per year CO2e'
+    # Software / SaaS
+    elif any(kw in name_lower for kw in ['license', 'subscription', 'saas', 'software', 'microsoft 365', 'office 365', 'adobe', 'cloud']):
+        queries.append(f'"{material_name}" carbon footprint per user CO2e')
+        queries.append(f'software as a service carbon emission factor per user')
 
-    # Transport → use "emission factor per km"
-    if any(kw in name_lower for kw in ['freight', 'transport', 'shipping', 'delivery', 'truck', 'sea freight', 'air freight', 'road']):
-        return f'"{material_name}" emission factor kgCO2e per km GLEC'
+    # Transport
+    elif any(kw in name_lower for kw in ['freight', 'transport', 'shipping', 'delivery', 'truck', 'sea freight', 'air freight', 'road']):
+        queries.append(f'"{material_name}" emission factor kgCO2e per km')
+        queries.append(f'GLEC Framework emission factor transport')
 
-    # Energy → use "emission factor kWh"
-    if any(kw in name_lower for kw in ['electricity', 'grid', 'diesel', 'gas', 'fuel', 'energy', 'power']):
-        return f'"{material_name}" emission factor kgCO2e per kWh'
+    # Energy
+    elif any(kw in name_lower for kw in ['electricity', 'grid', 'diesel', 'gas', 'fuel', 'energy', 'power']):
+        queries.append(f'"{material_name}" emission factor kgCO2e per kWh')
+        queries.append(f'Thailand grid emission factor 2024')
 
-    # Default: materials / chemicals / raw
-    return f'"{material_name}" emission factor kgCO2e per kg Ecoinvent'
+    # Furniture / office equipment
+    elif any(kw in name_lower for kw in ['desk', 'chair', 'furniture', 'office']):
+        queries.append(f'"{material_name}" carbon footprint kg CO2e')
+        queries.append(f'office furniture lifecycle CO2e emission factor')
+
+    # Default: materials
+    else:
+        queries.append(f'"{material_name}" emission factor kgCO2e per kg')
+        queries.append(f'{material_name} Ecoinvent emission factor')
+
+    return queries
 
 
 def _serper_find_sources(material_name: str, max_results: int = 3) -> list[str]:
-    """Search Serper for real source URLs. Returns list of source strings."""
+    """Search Serper for real source URLs. Tries multiple queries from specific to broad."""
     import requests
+    from urllib.parse import urlparse
 
-    query = _build_serper_query(material_name)
+    queries = _build_serper_queries(material_name)
     url = "https://google.serper.dev/search"
     headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
-    payload = {"q": query, "num": max_results + 3}
 
-    try:
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        organic = data.get("organic", [])
+    all_sources = []
+    seen_domains = set()
 
-        if not organic:
-            return []
+    for query in queries:
+        payload = {"q": query, "num": max_results + 2}
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            response.raise_for_status()
+            data = response.json()
+            organic = data.get("organic", [])
 
-        logger.info(f"Serper: {len(organic)} results for '{material_name}'")
-
-        sources = []
-        seen_domains = set()
-        for item in organic:
-            source_url = item.get("link", "")
-            source_title = item.get("title", "")
-            if not source_url:
+            if not organic:
                 continue
-            # Deduplicate by domain to get diverse sources
-            from urllib.parse import urlparse
-            domain = urlparse(source_url).netloc.replace("www.", "")
-            if domain in seen_domains:
-                continue
-            seen_domains.add(domain)
-            sources.append(f"{source_title} — {source_url}")
-            if len(sources) >= max_results:
-                break
 
-        if sources:
-            logger.info(f"Serper found {len(sources)} source(s) for '{material_name}'")
-        return sources
+            logger.info(f"Serper query '{query[:60]}...': {len(organic)} results")
 
-    except Exception as e:
-        logger.error(f"Serper source search failed: {e}")
-    return []
+            for item in organic:
+                source_url = item.get("link", "")
+                source_title = item.get("title", "")
+                if not source_url:
+                    continue
+                domain = urlparse(source_url).netloc.replace("www.", "")
+                if domain in seen_domains:
+                    continue
+                seen_domains.add(domain)
+                all_sources.append(f"{source_title} — {source_url}")
+                if len(all_sources) >= max_results:
+                    break
+
+            if all_sources:
+                break  # Found results, stop trying more queries
+
+        except Exception as e:
+            logger.error(f"Serper query failed: {e}")
+            continue
+
+    if all_sources:
+        logger.info(f"Serper found {len(all_sources)} source(s) for '{material_name}'")
+    return all_sources
 
 
 def _serper_search(material_name: str) -> EfResult | None:
