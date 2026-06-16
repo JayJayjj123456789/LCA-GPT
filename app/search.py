@@ -233,26 +233,6 @@ def get_trusted_source(category: str, material_name: str = "") -> str:
     return TRUSTED_SOURCES.get(category, TRUSTED_SOURCES["material"])
 
 
-# Generic URLs that AI always copies from prompt — these are NOT real sources
-_AI_GENERIC_URLS = [
-    "https://ecoinvent.org/database/",
-    "https://www.tgo.or.th",
-    "https://www.smartfreightcentre.org/en/glec/",
-    "https://www.ipcc.ch/report/ar6/wg3/",
-    "https://www.epa.gov/climateleadership/ghg-emission-factors-hub",
-    "https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting",
-    "https://www.iea.org/data-and-statistics/data-product/emissions-factors-2023",
-    "https://eplca.jrc.ec.europa.eu/",
-    "https://ghgprotocol.org/",
-    "https://www.iso.org/",
-    "https://climatiq.io/",
-    "https://thaicarbonlabel.tgo.or.th/",
-    "https://www.diw.go.th/",
-    "https://www.egat.co.th/",
-    "https://www.setsustainability.com/",
-    "https://ec.europa.eu/",
-]
-
 
 def _is_homepage_url(url: str) -> bool:
     """Check if URL is just a domain root / homepage (not a specific page)."""
@@ -291,15 +271,6 @@ def clean_note(note: str, name: str, category: str = "material") -> str:
     return get_trusted_source(category, name)
 
 
-def _extract_sources_from_note(note: str) -> list[str]:
-    """Extract individual source strings from a note (split by ' | ' or ' — ')."""
-    if not note:
-        return []
-    # Split by common separators
-    parts = note.split(' | ')
-    if len(parts) == 1:
-        parts = note.split(' — ')
-    return [p.strip() for p in parts if p.strip()]
 def search_emission_factor(material_name: str) -> EfResult | None:
     """Search for the latest emission factor of a material.
 

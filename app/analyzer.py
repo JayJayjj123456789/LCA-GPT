@@ -142,11 +142,6 @@ def analyze_enterprise_carbon(text: str) -> str | None:
         raise RuntimeError(f"API Error: {e}")
 
 
-def lookup_emission_factor(material_name: str) -> "EfResult | None":
-    """Look up emission factor via Google Search or fallback database."""
-    from app.search import search_emission_factor
-    return search_emission_factor(material_name)
-
 
 def save_audit_to_memory(data: dict) -> None:
     """Store completed audit in vector store for future reference."""

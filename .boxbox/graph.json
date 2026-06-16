@@ -1,0 +1,213 @@
+{
+  "project_name": "LCA-GPT Enterprise",
+  "stack": [
+    { "name": "React 19", "category": "frontend", "icon": "react" },
+    { "name": "Vite 6", "category": "frontend", "icon": "react" },
+    { "name": "TypeScript", "category": "frontend", "icon": "react" },
+    { "name": "Tailwind CSS 4", "category": "frontend", "icon": "react" },
+    { "name": "FastAPI", "category": "backend", "icon": "python" },
+    { "name": "Neo4j", "category": "database", "icon": "postgres" },
+    { "name": "Plotly.js", "category": "frontend", "icon": "chart" },
+    { "name": "ReactFlow", "category": "frontend", "icon": "chart" },
+    { "name": "ReportLab", "category": "backend", "icon": "file" },
+    { "name": "PyMuPDF", "category": "backend", "icon": "file" }
+  ],
+  "nodes": [
+    {
+      "id": "app-shell",
+      "name": "App Shell & Router",
+      "plain_english": "The root React component that manages navigation between views and holds shared state (current analysis, audit history).",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "dashboard",
+      "files": ["frontend/src/App.tsx", "frontend/src/main.tsx", "frontend/src/components/Sidebar.tsx"],
+      "external": false
+    },
+    {
+      "id": "dashboard-view",
+      "name": "Dashboard View",
+      "plain_english": "Overview page showing KPI metrics (total CO2, items tracked, optimization score), Charts (hotspot bar, pie, Sankey), latest audit summary, and recommendations.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "dashboard",
+      "files": ["frontend/src/views/DashboardView.tsx", "frontend/src/components/Dashboard.tsx", "frontend/src/components/Charts.tsx"],
+      "external": false
+    },
+    {
+      "id": "audit-view",
+      "name": "Audit View",
+      "plain_english": "Upload page where users drop PDF/Excel files for analysis. Shows a supply chain graph (ReactFlow) and a material/energy/transport data table after analysis completes.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "upload",
+      "files": ["frontend/src/views/AuditView.tsx", "frontend/src/components/PdfUploader.tsx", "frontend/src/components/GraphViz.tsx", "frontend/src/components/DataTable.tsx"],
+      "external": false
+    },
+    {
+      "id": "graph-view",
+      "name": "Graph View",
+      "plain_english": "Full-screen interactive supply chain graph visualization with zoom controls, plus charts below when data exists.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "chart",
+      "files": ["frontend/src/views/GraphView.tsx", "frontend/src/components/GraphViz.tsx", "frontend/src/components/Charts.tsx"],
+      "external": false
+    },
+    {
+      "id": "strategies-view",
+      "name": "Strategies View",
+      "plain_english": "AI chat consultant page. Left panel: real-time conversation with Graph RAG backend. Right panel: AI-generated recommendations cards with scope labels.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "ai",
+      "files": ["frontend/src/views/StrategiesView.tsx", "frontend/src/components/Chat.tsx", "frontend/src/components/Recommendations.tsx"],
+      "external": false
+    },
+    {
+      "id": "reports-view",
+      "name": "Reports View",
+      "plain_english": "Historical audit browser. Left: scrollable list of past audits. Right: detailed breakdown with emissions table, scope bars, summary, and export buttons (PDF/CSV).",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "file",
+      "files": ["frontend/src/views/ReportsView.tsx", "frontend/src/components/PastAudits.tsx", "frontend/src/components/ConfirmModal.tsx"],
+      "external": false
+    },
+    {
+      "id": "fastapi-server",
+      "name": "FastAPI Server",
+      "plain_english": "The main backend server that handles all API requests from the frontend.",
+      "layer": "api",
+      "rank": 1,
+      "icon": "python",
+      "files": ["backend/main.py"],
+      "external": false
+    },
+    {
+      "id": "pdf-analyzer",
+      "name": "PDF Analysis Engine",
+      "plain_english": "Extracts text from PDFs and Excel files, then uses OpenRouter AI to identify materials, energy use, and transport emissions.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "file",
+      "files": ["app/analyzer.py"],
+      "external": false
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics & Charts",
+      "plain_english": "Generates interactive Plotly charts — carbon hotspot bars, emission breakdown pie, and supply chain Sankey diagram.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "chart",
+      "files": ["app/analytics.py"],
+      "external": false
+    },
+    {
+      "id": "report-generator",
+      "name": "PDF Report Generator",
+      "plain_english": "Creates professional ISO 14067 carbon footprint reports as downloadable PDFs.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "file",
+      "files": ["app/report.py"],
+      "external": false
+    },
+    {
+      "id": "search-intelligence",
+      "name": "Search & Emission Factors",
+      "plain_english": "Looks up verified emission factors from a trusted database and searches Serper.dev for unknown materials.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "globe",
+      "files": ["app/search.py"],
+      "external": false
+    },
+    {
+      "id": "chat-system",
+      "name": "Graph RAG Chat",
+      "plain_english": "An AI consultant that answers questions about the supply chain by reading the Neo4j graph database.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "ai",
+      "files": ["backend/graph_rag.py"],
+      "external": false
+    },
+    {
+      "id": "vector-store",
+      "name": "Audit Memory Store",
+      "plain_english": "Remembers past audits in-memory (simple material overlap matching) so the system can suggest similar ones.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "box",
+      "files": ["app/vector_store.py"],
+      "external": false
+    },
+    {
+      "id": "database-layer",
+      "name": "Neo4j Database Layer",
+      "plain_english": "Stores the supply chain as a graph of projects, materials, energy, and transport nodes connected by relationships.",
+      "layer": "database",
+      "rank": 3,
+      "icon": "box",
+      "files": ["app/database.py"],
+      "external": false
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter AI",
+      "plain_english": "Runs Owl-Alpha model to analyze supply chain documents and answer chat questions.",
+      "layer": "external",
+      "rank": 1,
+      "icon": "ai",
+      "files": [],
+      "external": true
+    },
+    {
+      "id": "serper",
+      "name": "Serper.dev",
+      "plain_english": "Google Search API that finds real emission factor data and source URLs for unknown materials.",
+      "layer": "external",
+      "rank": 1,
+      "icon": "globe",
+      "files": [],
+      "external": true
+    },
+    {
+      "id": "neo4j-cloud",
+      "name": "Neo4j",
+      "plain_english": "Cloud-hosted graph database that stores the supply chain data.",
+      "layer": "external",
+      "rank": 1,
+      "icon": "box",
+      "files": [],
+      "external": true
+    }
+  ],
+  "edges": [
+    { "from": "dashboard-view", "to": "fastapi-server", "label": "fetches metrics and summary", "kind": "api_call" },
+    { "from": "audit-view", "to": "fastapi-server", "label": "uploads PDF/Excel, triggers analysis", "kind": "api_call" },
+    { "from": "graph-view", "to": "fastapi-server", "label": "fetches graph nodes and edges", "kind": "api_call" },
+    { "from": "strategies-view", "to": "fastapi-server", "label": "sends chat questions to AI", "kind": "api_call" },
+    { "from": "reports-view", "to": "fastapi-server", "label": "requests PDF export", "kind": "api_call" },
+    { "from": "fastapi-server", "to": "pdf-analyzer", "label": "sends extracted text for AI analysis", "kind": "api_call" },
+    { "from": "pdf-analyzer", "to": "openrouter", "label": "asks AI to identify materials and emissions", "kind": "external_call" },
+    { "from": "pdf-analyzer", "to": "search-intelligence", "label": "looks up verified emission factors", "kind": "api_call" },
+    { "from": "search-intelligence", "to": "serper", "label": "searches the web for unknown material EFs", "kind": "external_call" },
+    { "from": "pdf-analyzer", "to": "database-layer", "label": "saves analysis results to the graph", "kind": "db_write" },
+    { "from": "pdf-analyzer", "to": "vector-store", "label": "stores audit in memory for future reference", "kind": "db_write" },
+    { "from": "database-layer", "to": "neo4j-cloud", "label": "reads and writes graph data", "kind": "external_call" },
+    { "from": "fastapi-server", "to": "analytics", "label": "requests chart data (hotspot, pie, sankey)", "kind": "api_call" },
+    { "from": "fastapi-server", "to": "report-generator", "label": "requests PDF report generation", "kind": "api_call" },
+    { "from": "fastapi-server", "to": "database-layer", "label": "fetches graph nodes and edges for ReactFlow", "kind": "db_read" },
+    { "from": "fastapi-server", "to": "chat-system", "label": "sends user questions about the supply chain", "kind": "api_call" },
+    { "from": "chat-system", "to": "database-layer", "label": "reads graph context to answer questions", "kind": "db_read" },
+    { "from": "chat-system", "to": "openrouter", "label": "asks AI to generate answers from graph context", "kind": "external_call" },
+    { "from": "fastapi-server", "to": "vector-store", "label": "searches similar past audits", "kind": "db_read" }
+  ],
+  "summary": {
+    "feature_count": 16,
+    "connection_count": 19,
+    "headline": "AI-powered supply chain carbon audit system — upload PDF invoices or BOMs, and it automatically identifies materials, calculates CO2e emissions, visualizes the supply chain as an interactive graph, and generates ISO 14067 reports."
+  }
+}

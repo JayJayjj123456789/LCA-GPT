@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>System Map · BoxBox</title>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+<style>
+  :root {
+    --bg: #f8fafc; --fg: #0f172a; --muted: #64748b; --card: #ffffff;
+    --border: #e2e8f0; --shadow: 0 4px 16px rgba(15,23,42,.08);
+    --frontend:#3b82f6; --api:#8b5cf6; --backend:#10b981;
+    --database:#f59e0b; --external:#ec4899;
+  }
+  [data-theme="dark"] {
+    --bg:#0f172a; --fg:#f1f5f9; --muted:#94a3b8; --card:#1e293b;
+    --border:#334155; --shadow:0 4px 16px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { display:flex; align-items:center; justify-content:space-between;
+    padding:14px 24px; border-bottom:1px solid var(--border); background:var(--card); }
+  .brand { font-weight:700; font-size:18px; display:flex; align-items:center; gap:10px; }
+  .brand-dot { width:14px; height:14px; border-radius:4px;
+    background:linear-gradient(135deg,var(--frontend),var(--external)); }
+  .stack { display:flex; gap:8px; flex-wrap:wrap; }
+  .badge { padding:4px 10px; border-radius:999px; background:var(--bg);
+    border:1px solid var(--border); font-size:12px; color:var(--muted); }
+  .theme-btn { background:transparent; border:1px solid var(--border);
+    border-radius:8px; padding:6px 12px; cursor:pointer; color:var(--fg); }
+  .headline { padding:20px 24px 8px; font-size:20px; font-weight:600; max-width:900px; }
+  .subline { padding:0 24px 16px; color:var(--muted); font-size:14px; }
+  #cy { width:100%; height: calc(100vh - 220px); background:var(--bg); }
+  .legend { position:absolute; bottom:18px; left:18px; background:var(--card);
+    border:1px solid var(--border); border-radius:12px; padding:10px 14px;
+    box-shadow:var(--shadow); display:flex; gap:14px; flex-wrap:wrap; font-size:12px; z-index:5; }
+  .legend-item { display:flex; align-items:center; gap:6px; }
+  .legend-dot { width:12px; height:12px; border-radius:4px; }
+  .controls { position:absolute; top:172px; right:18px; display:flex; gap:8px; z-index:5; }
+  .ctrl-btn { background:var(--card); border:1px solid var(--border); border-radius:8px;
+    padding:6px 12px; cursor:pointer; color:var(--fg); box-shadow:var(--shadow); }
+  aside.panel {
+    position:fixed; top:0; right:0; height:100%; width:380px; max-width:90vw;
+    background:var(--card); border-left:1px solid var(--border); box-shadow:var(--shadow);
+    transform:translateX(110%); transition:transform .25s ease; z-index:20;
+    display:flex; flex-direction:column;
+  }
+  aside.panel.open { transform:translateX(0); }
+  .panel-head { padding:20px 24px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; }
+  .panel-title { font-size:18px; font-weight:700; display:flex; align-items:center; gap:10px; }
+  .panel-chip { padding:3px 8px; border-radius:6px; font-size:11px; color:white;
+    text-transform:uppercase; letter-spacing:.5px; }
+  .panel-body { padding:20px 24px; overflow-y:auto; flex:1; }
+  .panel-body h4 { margin:18px 0 8px; font-size:13px; text-transform:uppercase;
+    letter-spacing:.5px; color:var(--muted); }
+  .panel-body p.explain { font-size:15px; line-height:1.5; }
+  .panel-body ul { padding-left:18px; margin:0; }
+  .panel-body li { margin:4px 0; font-size:13px; color:var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; }
+  .conn { padding:8px 12px; background:var(--bg); border-radius:8px; margin:6px 0;
+    font-size:13px; border:1px solid var(--border); }
+  .close-btn { background:transparent; border:none; font-size:22px; cursor:pointer;
+    color:var(--muted); line-height:1; }
+  .credit { position:absolute; bottom:18px; right:18px; background:var(--card);
+    border:1px solid var(--border); border-radius:12px; padding:8px 14px;
+    box-shadow:var(--shadow); font-size:12px; color:var(--muted);
+    display:flex; align-items:center; gap:8px; z-index:5; }
+  .credit a { color:var(--fg); text-decoration:none; font-weight:600; }
+  .credit a:hover { text-decoration:underline; }
+  .credit-dot { width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--frontend),var(--external)); }
+  .credit-sep { color:var(--muted); }
+  .credit-fb { display:inline-flex; align-items:center; gap:4px; color:#1877F2 !important; }
+  .credit-fb:hover { color:#0d65d9 !important; }
+  @media (max-width: 640px) {
+    header { flex-wrap:wrap; gap:10px; }
+    .stack { order:3; width:100%; }
+    aside.panel { width:100%; }
+    .credit { bottom:auto; top:8px; right:8px; font-size:11px; padding:6px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <span id="project-name">System Map</span>
+  </div>
+  <div class="stack" id="stack"></div>
+  <button class="theme-btn" id="theme-btn">Light mode</button>
+</header>
+
+<div class="headline" id="headline"></div>
+<div class="subline">Click any block to learn what it does. Drag to pan, scroll to zoom.</div>
+
+<div class="controls">
+  <button class="ctrl-btn" id="fit-btn">Fit to screen</button>
+  <button class="ctrl-btn" id="reset-btn">Reset view</button>
+</div>
+
+<div id="cy"></div>
+
+<div class="legend" id="legend"></div>
+
+<div class="credit">
+  <span class="credit-dot"></span>
+  Made with <a href="https://github.com/aiunlocked1412/boxbox" target="_blank" rel="noopener">BoxBox</a>
+  by <a href="https://github.com/aiunlocked1412" target="_blank" rel="noopener">AI UNLOCKED</a>
+  <span class="credit-sep">·</span>
+  <a href="https://www.facebook.com/aiunlockedvip" target="_blank" rel="noopener" class="credit-fb" aria-label="AI UNLOCKED on Facebook">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.77l-.44 2.89h-2.33v6.99A10 10 0 0 0 22 12z"/></svg>
+    Facebook
+  </a>
+</div>
+
+<aside class="panel" id="panel" aria-hidden="true">
+  <div class="panel-head">
+    <div class="panel-title">
+      <span class="panel-chip" id="panel-chip">layer</span>
+      <span id="panel-name"></span>
+    </div>
+    <button class="close-btn" id="close-btn" aria-label="Close">&times;</button>
+  </div>
+  <div class="panel-body">
+    <p class="explain" id="panel-explain"></p>
+    <h4>Connections in</h4>
+    <div id="panel-in"></div>
+    <h4>Connections out</h4>
+    <div id="panel-out"></div>
+    <h4>Files</h4>
+    <ul id="panel-files"></ul>
+  </div>
+</aside>
+
+<script>
+const DATA = {
+  "project_name": "LCA-GPT Enterprise",
+  "stack": [
+    { "name": "React 19", "category": "frontend", "icon": "react" },
+    { "name": "Vite 6", "category": "frontend", "icon": "react" },
+    { "name": "TypeScript", "category": "frontend", "icon": "react" },
+    { "name": "Tailwind CSS 4", "category": "frontend", "icon": "react" },
+    { "name": "FastAPI", "category": "backend", "icon": "python" },
+    { "name": "Neo4j", "category": "database", "icon": "postgres" },
+    { "name": "Plotly.js", "category": "frontend", "icon": "chart" },
+    { "name": "ReactFlow", "category": "frontend", "icon": "chart" },
+    { "name": "ReportLab", "category": "backend", "icon": "file" },
+    { "name": "PyMuPDF", "category": "backend", "icon": "file" }
+  ],
+  "nodes": [
+    {
+      "id": "app-shell",
+      "name": "App Shell & Sidebar",
+      "plain_english": "The main layout with a fixed sidebar for navigation between pages. Manages global state (current analysis, audit history) and routes to the active view.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "dashboard",
+      "files": ["frontend/src/App.tsx", "frontend/src/main.tsx", "frontend/src/components/Sidebar.tsx"],
+      "external": false
+    },
+    {
+      "id": "page-dashboard",
+      "name": "Dashboard Page",
+      "plain_english": "The landing page showing a hero header, key metrics (total CO2, items tracked, optimization score), Plotly charts (hotspot bar, pie breakdown, Sankey flow), and the latest audit summary with top 3 recommendations.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "chart",
+      "files": ["frontend/src/views/DashboardView.tsx", "frontend/src/components/Dashboard.tsx", "frontend/src/components/Charts.tsx"],
+      "external": false
+    },
+    {
+      "id": "page-audit",
+      "name": "Audit Page",
+      "plain_english": "The main work page where users upload PDF/Excel files for AI analysis. Shows a file uploader on the left and a live supply chain graph on the right. After analysis, displays full material/energy/transport data tables below.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "file",
+      "files": ["frontend/src/views/AuditView.tsx", "frontend/src/components/PdfUploader.tsx", "frontend/src/components/DataTable.tsx"],
+      "external": false
+    },
+    {
+      "id": "page-graph",
+      "name": "Graph Page",
+      "plain_english": "Full-screen interactive supply chain graph (ReactFlow) with zoom controls, showing Project/Material/Energy/Transport nodes and their relationships. Charts appear below when data exists.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "chart",
+      "files": ["frontend/src/views/GraphView.tsx", "frontend/src/components/GraphViz.tsx"],
+      "external": false
+    },
+    {
+      "id": "page-strategies",
+      "name": "Strategies Page",
+      "plain_english": "AI Strategy Consultant chat interface on the left, AI-generated recommendation cards (tagged by Scope 1/2/3) on the right, plus an analysis summary. Users can ask follow-up questions about mitigation.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "ai",
+      "files": ["frontend/src/views/StrategiesView.tsx", "frontend/src/components/Chat.tsx", "frontend/src/components/Recommendations.tsx"],
+      "external": false
+    },
+    {
+      "id": "page-reports",
+      "name": "Reports Page",
+      "plain_english": "Lists all past audits with a selectable sidebar. The detail panel shows emissions breakdown table (Materials/Energy/Transport), key metrics, AI summary, recommendations, and PDF/CSV export buttons.",
+      "layer": "frontend",
+      "rank": 0,
+      "icon": "file",
+      "files": ["frontend/src/views/ReportsView.tsx", "frontend/src/components/PastAudits.tsx", "frontend/src/components/ConfirmModal.tsx"],
+      "external": false
+    },
+    {
+      "id": "fastapi-server",
+      "name": "FastAPI Server",
+      "plain_english": "The main backend server that handles all API requests from the frontend.",
+      "layer": "api",
+      "rank": 1,
+      "icon": "python",
+      "files": ["backend/main.py"],
+      "external": false
+    },
+    {
+      "id": "pdf-analyzer",
+      "name": "PDF Analysis Engine",
+      "plain_english": "Extracts text from PDFs and Excel files, then uses OpenRouter AI to identify materials, energy use, and transport emissions.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "file",
+      "files": ["app/analyzer.py"],
+      "external": false
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics & Charts",
+      "plain_english": "Generates interactive Plotly charts — carbon hotspot bars, emission breakdown pie, and supply chain Sankey diagram.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "chart",
+      "files": ["app/analytics.py"],
+      "external": false
+    },
+    {
+      "id": "report-generator",
+      "name": "PDF Report Generator",
+      "plain_english": "Creates professional ISO 14067 carbon footprint reports as downloadable PDFs.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "file",
+      "files": ["app/report.py"],
+      "external": false
+    },
+    {
+      "id": "search-intelligence",
+      "name": "Search & Emission Factors",
+      "plain_english": "Looks up verified emission factors from a trusted database and searches Serper.dev for unknown materials.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "globe",
+      "files": ["app/search.py"],
+      "external": false
+    },
+    {
+      "id": "chat-system",
+      "name": "Graph RAG Chat",
+      "plain_english": "An AI consultant that answers questions about the supply chain by reading the Neo4j graph database.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "ai",
+      "files": ["backend/graph_rag.py"],
+      "external": false
+    },
+    {
+      "id": "vector-store",
+      "name": "Audit Memory Store",
+      "plain_english": "Remembers past audits in-memory (simple material overlap matching) so the system can suggest similar ones.",
+      "layer": "backend",
+      "rank": 2,
+      "icon": "box",
+      "files": ["app/vector_store.py"],
+      "external": false
+    },
+    {
+      "id": "database-layer",
+      "name": "Neo4j Database Layer",
+      "plain_english": "Stores the supply chain as a graph of projects, materials, energy, and transport nodes connected by relationships.",
+      "layer": "database",
+      "rank": 3,
+      "icon": "box",
+      "files": ["app/database.py"],
+      "external": false
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter AI",
+      "plain_english": "Runs Owl-Alpha model to analyze supply chain documents and answer chat questions.",
+      "layer": "external",
+      "rank": 1,
+      "icon": "ai",
+      "files": [],
+      "external": true
+    },
+    {
+      "id": "serper",
+      "name": "Serper.dev",
+      "plain_english": "Google Search API that finds real emission factor data and source URLs for unknown materials.",
+      "layer": "external",
+      "rank": 1,
+      "icon": "globe",
+      "files": [],
+      "external": true
+    },
+    {
+      "id": "neo4j-cloud",
+      "name": "Neo4j",
+      "plain_english": "Cloud-hosted graph database that stores the supply chain data.",
+      "layer": "external",
+      "rank": 1,
+      "icon": "box",
+      "files": [],
+      "external": true
+    }
+  ],
+  "edges": [
+    { "from": "app-shell", "to": "page-dashboard", "label": "routes to dashboard view", "kind": "import" },
+    { "from": "app-shell", "to": "page-audit", "label": "routes to audit view", "kind": "import" },
+    { "from": "app-shell", "to": "page-graph", "label": "routes to graph view", "kind": "import" },
+    { "from": "app-shell", "to": "page-strategies", "label": "routes to strategies view", "kind": "import" },
+    { "from": "app-shell", "to": "page-reports", "label": "routes to reports view", "kind": "import" },
+    { "from": "page-audit", "to": "fastapi-server", "label": "uploads PDF/Excel for AI analysis", "kind": "api_call" },
+    { "from": "page-dashboard", "to": "fastapi-server", "label": "fetches chart JSON (hotspot, pie, sankey)", "kind": "api_call" },
+    { "from": "page-graph", "to": "fastapi-server", "label": "fetches graph nodes and edges", "kind": "api_call" },
+    { "from": "page-strategies", "to": "fastapi-server", "label": "sends chat messages, receives AI answers", "kind": "api_call" },
+    { "from": "page-reports", "to": "fastapi-server", "label": "requests PDF report download", "kind": "api_call" },
+    { "from": "fastapi-server", "to": "pdf-analyzer", "label": "sends extracted text for AI analysis", "kind": "api_call" },
+    { "from": "pdf-analyzer", "to": "openrouter", "label": "asks AI to identify materials and emissions", "kind": "external_call" },
+    { "from": "pdf-analyzer", "to": "search-intelligence", "label": "looks up verified emission factors", "kind": "api_call" },
+    { "from": "search-intelligence", "to": "serper", "label": "searches the web for unknown material EFs", "kind": "external_call" },
+    { "from": "pdf-analyzer", "to": "database-layer", "label": "saves analysis results to the graph", "kind": "db_write" },
+    { "from": "pdf-analyzer", "to": "vector-store", "label": "stores audit in memory for future reference", "kind": "db_write" },
+    { "from": "database-layer", "to": "neo4j-cloud", "label": "reads and writes graph data", "kind": "external_call" },
+    { "from": "fastapi-server", "to": "analytics", "label": "requests chart data (hotspot, pie, sankey)", "kind": "api_call" },
+    { "from": "fastapi-server", "to": "report-generator", "label": "requests PDF report generation", "kind": "api_call" },
+    { "from": "fastapi-server", "to": "database-layer", "label": "fetches graph nodes and edges for ReactFlow", "kind": "db_read" },
+    { "from": "fastapi-server", "to": "chat-system", "label": "sends user questions about the supply chain", "kind": "api_call" },
+    { "from": "chat-system", "to": "database-layer", "label": "reads graph context to answer questions", "kind": "db_read" },
+    { "from": "chat-system", "to": "openrouter", "label": "asks AI to generate answers from graph context", "kind": "external_call" },
+    { "from": "fastapi-server", "to": "vector-store", "label": "searches similar past audits", "kind": "db_read" }
+  ],
+  "summary": {
+    "feature_count": 17,
+    "connection_count": 24,
+    "headline": "AI-powered supply chain carbon audit system — upload PDF invoices or BOMs, and it automatically identifies materials, calculates CO2e emissions, visualizes the supply chain as an interactive graph, and generates ISO 14067 reports."
+  }
+};
+
+const LAYER_COLORS = {
+  frontend: "#3b82f6", api: "#8b5cf6", backend: "#10b981",
+  database: "#f59e0b", external: "#ec4899"
+};
+const LAYER_LABEL = {
+  frontend: "User interface", api: "Server endpoints",
+  backend: "Business logic", database: "Data storage",
+  external: "Outside services"
+};
+
+document.getElementById("project-name").textContent = DATA.project_name || "System Map";
+document.getElementById("headline").textContent = DATA.summary?.headline || "";
+
+const stackEl = document.getElementById("stack");
+(DATA.stack || []).forEach(s => {
+  const b = document.createElement("span");
+  b.className = "badge"; b.textContent = s.name;
+  stackEl.appendChild(b);
+});
+
+const legendEl = document.getElementById("legend");
+Object.entries(LAYER_LABEL).forEach(([k,v]) => {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.innerHTML = `<span class="legend-dot" style="background:${LAYER_COLORS[k]}"></span>${v}`;
+  legendEl.appendChild(item);
+});
+
+cytoscape.use(cytoscapeDagre);
+
+const elements = [
+  ...DATA.nodes.map(n => ({
+    data: { id: n.id, label: n.name, plain: n.plain_english,
+            layer: n.layer, files: n.files || [], external: !!n.external },
+    classes: n.layer
+  })),
+  ...DATA.edges.map(e => ({
+    data: { source: e.from, target: e.to, label: e.label || "", kind: e.kind }
+  }))
+];
+
+const cy = cytoscape({
+  container: document.getElementById("cy"),
+  elements,
+  style: [
+    { selector: "node", style: {
+      "shape": "round-rectangle",
+      "background-color": "data(color)",
+      "background-color": ele => LAYER_COLORS[ele.data("layer")] || "#64748b",
+      "label": "data(label)", "color": "#ffffff",
+      "text-valign": "center", "text-halign": "center",
+      "text-wrap": "wrap", "text-max-width": "140px",
+      "font-size": 14, "font-weight": 600,
+      "width": 180, "height": 70,
+      "border-width": 0,
+      "padding": 12,
+      "text-outline-width": 0
+    }},
+    { selector: "node:selected", style: { "border-width": 4, "border-color": "#f8fafc" }},
+    { selector: "edge", style: {
+      "width": 2,
+      "line-color": "#94a3b8",
+      "target-arrow-color": "#94a3b8",
+      "target-arrow-shape": "triangle",
+      "arrow-scale": 1.4,
+      "curve-style": "bezier",
+      "label": "data(label)",
+      "font-size": 11,
+      "font-weight": 500,
+      "color": "#0f172a",
+      "text-background-color": "#ffffff",
+      "text-background-opacity": 1,
+      "text-background-padding": 5,
+      "text-background-shape": "round-rectangle",
+      "text-border-color": "#e2e8f0",
+      "text-border-width": 1,
+      "text-border-opacity": 1,
+      "text-margin-y": -4,
+      "text-wrap": "wrap",
+      "text-max-width": "140px"
+    }},
+    { selector: "edge:hover", style: { "line-color": "#0f172a", "target-arrow-color": "#0f172a", "width": 3 }}
+  ],
+  layout: {
+    name: "dagre", rankDir: "TB", nodeSep: 80, rankSep: 140, padding: 40, edgeSep: 30
+  },
+  wheelSensitivity: 0.2
+});
+
+cy.on("tap", "node", (evt) => {
+  const n = evt.target;
+  const d = n.data();
+  document.getElementById("panel-name").textContent = d.label;
+  const chip = document.getElementById("panel-chip");
+  chip.textContent = LAYER_LABEL[d.layer] || d.layer;
+  chip.style.background = LAYER_COLORS[d.layer] || "#64748b";
+  document.getElementById("panel-explain").textContent = d.plain || "";
+
+  const inDiv = document.getElementById("panel-in"); inDiv.innerHTML = "";
+  const outDiv = document.getElementById("panel-out"); outDiv.innerHTML = "";
+  n.incomers("edge").forEach(e => {
+    const src = e.source().data("label");
+    const div = document.createElement("div");
+    div.className = "conn"; div.textContent = `${src} → ${e.data("label") || "connects here"}`;
+    inDiv.appendChild(div);
+  });
+  n.outgoers("edge").forEach(e => {
+    const tgt = e.target().data("label");
+    const div = document.createElement("div");
+    div.className = "conn"; div.textContent = `${e.data("label") || "sends to"} → ${tgt}`;
+    outDiv.appendChild(div);
+  });
+  if (!inDiv.children.length) inDiv.innerHTML = '<div class="conn" style="color:var(--muted)">Nothing comes in.</div>';
+  if (!outDiv.children.length) outDiv.innerHTML = '<div class="conn" style="color:var(--muted)">Nothing goes out.</div>';
+
+  const ul = document.getElementById("panel-files"); ul.innerHTML = "";
+  (d.files || []).forEach(f => { const li = document.createElement("li"); li.textContent = f; ul.appendChild(li); });
+  if (!ul.children.length) { const li = document.createElement("li"); li.textContent = "(no files associated)"; ul.appendChild(li); }
+
+  document.getElementById("panel").classList.add("open");
+});
+
+document.getElementById("close-btn").onclick = () => document.getElementById("panel").classList.remove("open");
+document.getElementById("fit-btn").onclick = () => cy.fit(null, 40);
+document.getElementById("reset-btn").onclick = () => { cy.fit(null, 40); cy.zoom({ level: 1 }); };
+
+const themeBtn = document.getElementById("theme-btn");
+function applyEdgeTheme(mode) {
+  const dark = mode === "dark";
+  cy.style()
+    .selector("edge").style({
+      "color": dark ? "#f1f5f9" : "#0f172a",
+      "text-background-color": dark ? "#1e293b" : "#ffffff",
+      "text-border-color": dark ? "#334155" : "#e2e8f0",
+      "line-color": dark ? "#64748b" : "#94a3b8",
+      "target-arrow-color": dark ? "#64748b" : "#94a3b8"
+    })
+    .selector("node:selected").style({
+      "border-color": dark ? "#f8fafc" : "#0f172a"
+    }).update();
+}
+themeBtn.onclick = () => {
+  const html = document.documentElement;
+  const next = html.dataset.theme === "dark" ? "light" : "dark";
+  html.dataset.theme = next;
+  themeBtn.textContent = next === "dark" ? "Light mode" : "Dark mode";
+  applyEdgeTheme(next);
+};
+
+applyEdgeTheme(document.documentElement.dataset.theme);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") document.getElementById("panel").removeAttribute("class");
+});
+</script>
+</body>
+</html>
