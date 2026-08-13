@@ -37,7 +37,7 @@ export default function GraphView({ analysis, graphKey, onNavigate }: Props) {
         style={{ background:'#1c2116', border:'1px solid #31372a', height:560 }}>
         <div className="noise-bg" />
         <div className="relative z-10 h-full">
-          <GraphViz refreshKey={graphKey} />
+          <GraphViz refreshKey={graphKey} analysis={analysis} />
         </div>
       </div>
 

@@ -1,0 +1,49 @@
+PURCHASE ORDER
+
+PO Number: PO-2024-001
+Date: June 27, 2024
+Supplier: Green Materials Co., Ltd.
+Delivery Address: 123 Industrial Park, Bangkok, Thailand
+
+ITEMS ORDERED:
+
+1. Steel Sheets (Grade 304)
+   Quantity: 500 kg
+   Unit Price: $2.50/kg
+   Total: $1,250.00
+
+2. Aluminum Rods (6061-T6)
+   Quantity: 200 kg
+   Unit Price: $3.80/kg
+   Total: $760.00
+
+3. Plastic Pellets (HDPE)
+   Quantity: 150 kg
+   Unit Price: $1.20/kg
+   Total: $180.00
+
+4. Copper Wire (99.9% pure)
+   Quantity: 75 kg
+   Unit Price: $8.50/kg
+   Total: $637.50
+
+SHIPPING DETAILS:
+- Transport Mode: Truck
+- Distance: 450 km
+- Delivery Date: July 5, 2024
+
+ENERGY CONSUMPTION:
+- Estimated manufacturing energy: 2,500 kWh
+- Fuel type: Natural gas and electricity mix
+
+SUSTAINABILITY NOTES:
+- Steel contains 30% recycled content
+- Aluminum from certified sustainable sources
+- HDPE plastic is recyclable grade
+- Copper mining follows ISO 14001 standards
+
+Total Order Value: $2,827.50
+
+---
+Authorized by: Supply Chain Manager
+Company: EcoTech Manufacturing Ltd.

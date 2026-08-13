@@ -56,8 +56,12 @@ def _extract_text_from_excel(file_path: str) -> str:
     import pandas as pd
     try:
         parts = []
-        # Read all sheets at once — no repeated open
-        all_sheets = pd.read_excel(file_path, sheet_name=None, header=None)
+        # CSV: single sheet, read directly
+        if file_path.endswith(".csv"):
+            df = pd.read_csv(file_path, header=None)
+            all_sheets = {"Sheet1": df}
+        else:
+            all_sheets = pd.read_excel(file_path, sheet_name=None, header=None)
         for sheet_name, df in all_sheets.items():
             if df.empty:
                 continue
@@ -123,14 +127,26 @@ async def analyze_file(file: UploadFile = File(...)):
         if not analysis_raw:
             raise HTTPException(502, "AI returned no response")
 
-        clean_json = analysis_raw.replace("```json", "").replace("```", "").strip()
-        data = json.loads(clean_json)
+        data = json.loads(analysis_raw)
 
         # Enrich notes with source URLs if AI didn't include them
         _enrich_notes(data)
 
-        ingest_analysis_to_graph(data)
+        try:
+            ingest_analysis_to_graph(data)
+        except Exception as neo4j_err:
+            logger.warning(f"Neo4j ingestion skipped: {neo4j_err}")
         save_audit_to_memory(data)
+        try:
+            from app.vector_store import store_full_audit
+            store_full_audit(data)
+        except Exception as store_err:
+            logger.warning(f"Vector store save failed (non-fatal): {store_err}")
+
+        # Clear chat cache when new audit is uploaded
+        from backend.cache import clear_cache
+        clear_cache()
+        logger.info("Chat cache cleared after new audit upload")
 
         return JSONResponse(content=data)
 
@@ -253,6 +269,203 @@ async def similar_audits(materials: str = Query(...)):
     try:
         results = find_past_audits(material_list)
         return JSONResponse(content=results)
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# ─── Mathematical Analysis ──────────────────────────────────────
+
+@app.post("/api/math/matrix-lca")
+async def matrix_lca_analysis(data: dict):
+    """Run full Heijungs matrix LCA: h = Q·B·A⁻¹·f"""
+    try:
+        from app.math.matrix_lca import TechnologyMatrix
+        tm = TechnologyMatrix.from_supply_chain(data)
+        result = tm.compute_default()
+        return JSONResponse(content=result.to_dict())
+    except Exception as e:
+        logger.error(f"Matrix LCA error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/math/leontief")
+async def leontief_analysis(data: dict):
+    """Run Leontief EEIO-LCA: x = (I-A)⁻¹·y with power series visualization."""
+    try:
+        from app.math.leontief import LeontiefModel
+        model = LeontiefModel.from_supply_chain(data)
+
+        # Build demand vector
+        items = data.get("materials", []) + data.get("energy", []) + data.get("transport", [])
+        import numpy as np
+        demand = np.zeros(len(items), dtype=np.float64)
+        for i, item in enumerate(items):
+            demand[i] = item.get("amount", 0) or item.get("usage", 0) or item.get("distance", 0)
+
+        result = model.compute_impact(demand)
+        power_series = model.power_series_approximation(demand, order=8)
+
+        return JSONResponse(content={
+            **result.to_dict(),
+            "power_series": power_series,
+        })
+    except Exception as e:
+        logger.error(f"Leontief error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/math/topsis")
+async def topsis_analysis(payload: dict):
+    """Run TOPSIS multi-criteria decision analysis."""
+    try:
+        from app.math.topsis import TOPSIS
+        topsis = TOPSIS()
+
+        mode = payload.get("mode", "suppliers")
+        if mode == "suppliers":
+            result = topsis.rank_suppliers(
+                payload.get("suppliers", []),
+                payload.get("weights"),
+            )
+        elif mode == "materials":
+            result = topsis.rank_materials(
+                payload.get("materials", []),
+                payload.get("weights"),
+            )
+        else:
+            import numpy as np
+            result = topsis.rank(
+                alternatives=payload["alternatives"],
+                criteria=payload["criteria"],
+                decision_matrix=np.array(payload["decision_matrix"]),
+                weights=payload["weights"],
+                criteria_types=payload["criteria_types"],
+            )
+
+        return JSONResponse(content=result.to_dict())
+    except Exception as e:
+        logger.error(f"TOPSIS error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/math/monte-carlo")
+async def monte_carlo_analysis(data: dict):
+    """Run full-chain Monte Carlo uncertainty propagation."""
+    try:
+        from app.math.matrix_lca import TechnologyMatrix
+        from app.math.uncertainty import MonteCarloSimulation
+
+        tm = TechnologyMatrix.from_supply_chain(data)
+        mc = MonteCarloSimulation(tm)
+        mc.set_auto_uncertainty(cv=data.get("cv", 0.15))
+
+        n_sim = min(data.get("n_simulations", 5000), 50000)
+        result = mc.simulate(tm._default_demand, n_sim=n_sim, seed=42)
+
+        return JSONResponse(content=result.to_dict())
+    except Exception as e:
+        logger.error(f"Monte Carlo error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/math/sensitivity")
+async def sensitivity_analysis(data: dict):
+    """Run perturbation-based sensitivity analysis."""
+    try:
+        from app.math.matrix_lca import TechnologyMatrix
+        from app.math.sensitivity import SensitivityAnalysis
+
+        tm = TechnologyMatrix.from_supply_chain(data)
+        sa = SensitivityAnalysis()
+        process_names = [p.name for p in tm.processes]
+        result = sa.analyze(
+            tm.A, tm.B, tm.Q, tm._default_demand,
+            process_names=process_names,
+            variation=data.get("variation", 0.10),
+        )
+
+        return JSONResponse(content=result.to_dict())
+    except Exception as e:
+        logger.error(f"Sensitivity error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/math/nonlinear")
+async def nonlinear_comparison(data: dict):
+    """Compare linear vs non-linear LCA models."""
+    try:
+        from app.math.matrix_lca import TechnologyMatrix
+        from app.math.nonlinear_lca import NonLinearLCA
+
+        tm = TechnologyMatrix.from_supply_chain(data)
+        nl = NonLinearLCA.from_technology_matrix(tm)
+        comparison = nl.compare_linear_vs_nonlinear(tm.B, tm.Q, tm._default_demand)
+
+        return JSONResponse(content=comparison)
+    except Exception as e:
+        logger.error(f"Non-linear error: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ─── Advanced Charts ────────────────────────────────────────────
+
+@app.post("/api/charts/tornado")
+async def chart_tornado(data: dict):
+    """Generate tornado sensitivity chart."""
+    try:
+        from app.math.matrix_lca import TechnologyMatrix
+        from app.math.sensitivity import SensitivityAnalysis
+        from app.analytics_advanced import tornado_chart
+
+        tm = TechnologyMatrix.from_supply_chain(data)
+        sa = SensitivityAnalysis()
+        tornado_data = sa.tornado_chart_data(
+            tm.A, tm.B, tm.Q, tm._default_demand,
+            process_names=[p.name for p in tm.processes],
+        )
+        fig = tornado_chart(tornado_data)
+        return JSONResponse(content=_chart_to_json(fig))
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/charts/monte-carlo")
+async def chart_monte_carlo(data: dict):
+    """Generate Monte Carlo histogram chart."""
+    try:
+        from app.math.matrix_lca import TechnologyMatrix
+        from app.math.uncertainty import MonteCarloSimulation
+        from app.analytics_advanced import monte_carlo_histogram
+
+        tm = TechnologyMatrix.from_supply_chain(data)
+        mc = MonteCarloSimulation(tm)
+        mc.set_auto_uncertainty(cv=0.15)
+        result = mc.simulate(tm._default_demand, n_sim=5000, seed=42)
+
+        fig = monte_carlo_histogram(
+            result.distribution, result.mean, result.ci_95
+        )
+        return JSONResponse(content=_chart_to_json(fig))
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/charts/waterfall")
+async def chart_waterfall(data: dict):
+    """Generate waterfall contribution chart."""
+    try:
+        from app.math.matrix_lca import TechnologyMatrix
+        from app.math.sensitivity import SensitivityAnalysis
+        from app.analytics_advanced import waterfall_chart
+
+        tm = TechnologyMatrix.from_supply_chain(data)
+        sa = SensitivityAnalysis()
+        contribs = sa.contribution_analysis(
+            tm.A, tm.B, tm.Q, tm._default_demand,
+            process_names=[p.name for p in tm.processes],
+        )
+        fig = waterfall_chart(contribs)
+        return JSONResponse(content=_chart_to_json(fig))
     except Exception as e:
         raise HTTPException(500, str(e))
 

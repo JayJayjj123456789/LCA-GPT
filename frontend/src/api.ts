@@ -95,3 +95,76 @@ export const findSimilarAudits = async (materials: string[]): Promise<AuditResul
   })
   return data
 }
+
+// ─── Mathematical Analysis API ────────────────────────────────────
+
+export const runMatrixLCA = async (analysisData: AnalysisData): Promise<any> => {
+  const { data } = await api.post('/math/matrix-lca', analysisData)
+  return data
+}
+
+export const runLeontief = async (analysisData: AnalysisData): Promise<any> => {
+  const { data } = await api.post('/math/leontief', analysisData)
+  return data
+}
+
+export interface TOPSISSupplier {
+  name: string
+  carbon: number
+  cost: number
+  lead_time: number
+  quality: number
+}
+
+export const runTOPSIS = async (
+  suppliers: TOPSISSupplier[],
+  weights?: number[],
+): Promise<any> => {
+  const { data } = await api.post('/math/topsis', {
+    mode: 'suppliers',
+    suppliers,
+    weights,
+  })
+  return data
+}
+
+export const runMonteCarlo = async (
+  analysisData: AnalysisData,
+  nSimulations: number = 5000,
+  cv: number = 0.15,
+): Promise<any> => {
+  const { data } = await api.post('/math/monte-carlo', {
+    ...analysisData,
+    n_simulations: nSimulations,
+    cv,
+  })
+  return data
+}
+
+export const runSensitivity = async (analysisData: AnalysisData): Promise<any> => {
+  const { data } = await api.post('/math/sensitivity', analysisData)
+  return data
+}
+
+export const runNonLinear = async (analysisData: AnalysisData): Promise<any> => {
+  const { data } = await api.post('/math/nonlinear', analysisData)
+  return data
+}
+
+// ─── Advanced Charts API ──────────────────────────────────────────
+
+export const getTornadoChart = async (analysisData: AnalysisData): Promise<ChartData> => {
+  const { data } = await api.post<ChartData>('/charts/tornado', analysisData)
+  return data
+}
+
+export const getMonteCarloChart = async (analysisData: AnalysisData): Promise<ChartData> => {
+  const { data } = await api.post<ChartData>('/charts/monte-carlo', analysisData)
+  return data
+}
+
+export const getWaterfallChart = async (analysisData: AnalysisData): Promise<ChartData> => {
+  const { data } = await api.post<ChartData>('/charts/waterfall', analysisData)
+  return data
+}
+

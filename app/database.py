@@ -59,37 +59,57 @@ def ingest_analysis_to_graph(json_data: dict) -> None:
         logger.info(f"FILTERED transport: {transport}")
 
         with driver.session() as session:
+            # Split into separate queries — chained UNWIND on empty list kills
+            # subsequent WITH rows, silently dropping energy/transport data.
             session.run(
                 """
                 MERGE (p:Project {name: $proj_name})
                 SET p.supplier = $supplier, p.total_co2 = $total_co2, p.score = $score
                 CREATE (c:CarbonImpact {summary: $summary, timestamp: datetime()})
                 MERGE (p)-[:PRODUCED_IMPACT]->(c)
-                WITH p
-                UNWIND $materials AS mat
-                MERGE (m:Material {name: mat.name})
-                SET m.amount = mat.amount, m.unit = mat.unit, m.ef = mat.emission_factor, m.note = mat.note
-                MERGE (p)-[:CONSISTS_OF]->(m)
-                WITH p
-                UNWIND $energy AS en
-                CREATE (e:Energy {type: en.type})
-                SET e.usage = en.usage, e.ef = en.emission_factor, e.note = en.note
-                MERGE (p)-[:POWERED_BY]->(e)
-                WITH p
-                UNWIND $transport AS tr
-                CREATE (t:Transport {method: tr.method})
-                SET t.distance = tr.distance, t.unit = tr.unit, t.ef = tr.emission_factor, t.note = tr.note
-                MERGE (p)-[:SHIPPED_VIA]->(t)
                 """,
                 proj_name=json_data["project_info"]["name"],
                 supplier=json_data["project_info"]["supplier"],
                 total_co2=json_data["total_estimated_co2"],
                 score=json_data["optimization_score"],
                 summary=json_data["summary"],
-                materials=materials,
-                energy=energy,
-                transport=transport,
             )
+            if materials:
+                session.run(
+                    """
+                    MATCH (p:Project {name: $proj_name})
+                    UNWIND $materials AS mat
+                    MERGE (m:Material {name: mat.name})
+                    SET m.amount = mat.amount, m.unit = mat.unit, m.ef = mat.emission_factor, m.note = mat.note
+                    MERGE (p)-[:CONSISTS_OF]->(m)
+                    """,
+                    proj_name=json_data["project_info"]["name"],
+                    materials=materials,
+                )
+            if energy:
+                session.run(
+                    """
+                    MATCH (p:Project {name: $proj_name})
+                    UNWIND $energy AS en
+                    CREATE (e:Energy {type: en.type})
+                    SET e.usage = en.usage, e.ef = en.emission_factor, e.note = en.note
+                    MERGE (p)-[:POWERED_BY]->(e)
+                    """,
+                    proj_name=json_data["project_info"]["name"],
+                    energy=energy,
+                )
+            if transport:
+                session.run(
+                    """
+                    MATCH (p:Project {name: $proj_name})
+                    UNWIND $transport AS tr
+                    CREATE (t:Transport {method: tr.method})
+                    SET t.distance = tr.distance, t.unit = tr.unit, t.ef = tr.emission_factor, t.note = tr.note
+                    MERGE (p)-[:SHIPPED_VIA]->(t)
+                    """,
+                    proj_name=json_data["project_info"]["name"],
+                    transport=transport,
+                )
     finally:
         driver.close()
 
@@ -138,11 +158,3 @@ def get_graph_data():
     finally:
         driver.close()
 
-
-def get_graph_data_streamlit():
-    """Get graph data as streamlit_agraph objects (for Streamlit only)."""
-    from streamlit_agraph import Node, Edge
-    raw_nodes, raw_edges = get_graph_data()
-    nodes = [Node(id=n["id"], label=n["label"], size=n["size"], color=n["color"]) for n in raw_nodes]
-    edges = [Edge(source=e["source"], to=e["target"], label=e["label"]) for e in raw_edges]
-    return nodes, edges

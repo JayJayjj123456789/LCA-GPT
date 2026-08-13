@@ -2,7 +2,7 @@ import json
 import fitz
 import openai
 import logging
-from app.config import OPENROUTER_API_KEY
+from app.config import ACTIVE_API_KEY, ACTIVE_MODEL, ACTIVE_BASE_URL
 from app.search import search_emission_factor
 from app.vector_store import store_audit, find_similar_audits
 
@@ -23,10 +23,14 @@ def extract_text_from_pdf(file_path: str) -> str:
 
 def analyze_enterprise_carbon(text: str) -> str | None:
     client = openai.OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=OPENROUTER_API_KEY,
+        base_url=ACTIVE_BASE_URL,
+        api_key=ACTIVE_API_KEY,
     )
-    content_text = text[:8000]  # Increased for larger invoices/BOMs
+    # Chunk long documents: take first + last portion to capture header + line items
+    if len(text) <= 12000:
+        content_text = text
+    else:
+        content_text = text[:8000] + "\n...[middle truncated]...\n" + text[-4000:]
     system_prompt = (
         "You are an Expert LCA Sustainability Consultant. Your task is to extract carbon footprint data from ANY supply chain document — invoices, purchase orders, BOMs, receipts, sustainability reports, etc. "
         "CRITICAL: You MUST always return materials/energy/transport with real data. NEVER return empty arrays if there are line items in the document. "
@@ -130,14 +134,29 @@ def analyze_enterprise_carbon(text: str) -> str | None:
     """
     try:
         response = client.chat.completions.create(
-            model="openrouter/owl-alpha",
+            model=ACTIVE_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.1,
+            # poolside/laguna-s-2.1:free is a non-reasoning model; 2000 tokens is
+            # sufficient for the full JSON extraction output.
+            max_tokens=2000,
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if not content:
+            raise RuntimeError(
+                f"Empty model response (finish_reason={response.choices[0].finish_reason}); "
+                "model returned no content."
+            )
+        # Strip markdown code fences some models wrap around JSON output
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1]  # drop opening fence line
+            content = content.rsplit("```", 1)[0]  # drop closing fence
+            content = content.strip()
+        return content
     except Exception as e:
         raise RuntimeError(f"API Error: {e}")
 

@@ -8,9 +8,11 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { getGraph } from '../api'
+import type { AnalysisData } from '../api'
 
 interface Props {
   refreshKey?: number
+  analysis?: AnalysisData | null
 }
 
 /* Node colour palette — matches the Biophilic design token set */
@@ -23,7 +25,43 @@ const NODE_PALETTE = [
   '#bfcd8f', // tertiary
 ]
 
-export default function GraphViz({ refreshKey }: Props) {
+function buildLocalGraph(analysis: AnalysisData): { nodes: Node[]; edges: Edge[] } {
+  const nodes: Node[] = []
+  const edges: Edge[] = []
+  const projectId = 'project-0'
+
+  nodes.push({
+    id: projectId,
+    data: { label: analysis.project_info.name },
+    position: { x: 400, y: 20 },
+    style: { background: '#238636', color: '#fff', border: 'none', borderRadius: 10, padding: '7px 14px', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' },
+  })
+
+  analysis.materials?.forEach((m, i) => {
+    const id = `mat-${i}`
+    nodes.push({ id, data: { label: m.name }, position: { x: i * 180, y: 140 },
+      style: { background: '#d29922', color: '#10150b', border: 'none', borderRadius: 10, padding: '7px 14px', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' } })
+    edges.push({ id: `e-mat-${i}`, source: projectId, target: id, label: 'CONSISTS_OF', animated: true, style: { stroke: '#8b9d83', strokeWidth: 1.5 }, labelStyle: { fill: '#c4c8be', fontSize: 9 }, labelBgStyle: { fill: 'rgba(16,21,11,0.75)', rx: 4 } })
+  })
+
+  analysis.energy?.forEach((e, i) => {
+    const id = `eng-${i}`
+    nodes.push({ id, data: { label: e.type }, position: { x: i * 200, y: 280 },
+      style: { background: '#f85149', color: '#fff', border: 'none', borderRadius: 10, padding: '7px 14px', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' } })
+    edges.push({ id: `e-eng-${i}`, source: projectId, target: id, label: 'POWERED_BY', animated: true, style: { stroke: '#8b9d83', strokeWidth: 1.5 }, labelStyle: { fill: '#c4c8be', fontSize: 9 }, labelBgStyle: { fill: 'rgba(16,21,11,0.75)', rx: 4 } })
+  })
+
+  analysis.transport?.forEach((t, i) => {
+    const id = `trn-${i}`
+    nodes.push({ id, data: { label: t.method }, position: { x: i * 200, y: 420 },
+      style: { background: '#a371f7', color: '#fff', border: 'none', borderRadius: 10, padding: '7px 14px', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' } })
+    edges.push({ id: `e-trn-${i}`, source: projectId, target: id, label: 'SHIPPED_VIA', animated: true, style: { stroke: '#8b9d83', strokeWidth: 1.5 }, labelStyle: { fill: '#c4c8be', fontSize: 9 }, labelBgStyle: { fill: 'rgba(16,21,11,0.75)', rx: 4 } })
+  })
+
+  return { nodes, edges }
+}
+
+export default function GraphViz({ refreshKey, analysis }: Props) {
   const [nodes,   setNodes]   = useState<Node[]>([])
   const [edges,   setEdges]   = useState<Edge[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,6 +72,16 @@ export default function GraphViz({ refreshKey }: Props) {
     setError(false)
     try {
       const data = await getGraph()
+
+      // Neo4j empty — build graph from local analysis data
+      if (data.nodes.length === 0 && analysis) {
+        const local = buildLocalGraph(analysis)
+        setNodes(local.nodes)
+        setEdges(local.edges)
+        setLoading(false)
+        return
+      }
+
       const flowNodes: Node[] = data.nodes.map((n, i) => ({
         id:       n.id,
         data:     { label: n.label },
@@ -82,7 +130,7 @@ export default function GraphViz({ refreshKey }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [analysis])
 
   useEffect(() => {
     loadGraph()

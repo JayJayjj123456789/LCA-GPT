@@ -198,14 +198,9 @@ _FALLBACK_EF: dict[str, EfResult] = {
 # ── Broadened regex to catch real-world EF formats ───────────────────────────
 _EF_PATTERN = re.compile(
     r"(\d+\.?\d*)\s*(?:"
-    r"kg\s*CO[₂2]?[\s\-]?e(?:q(?:uivalent)?)?[/\s]*kg"
+    r"kg\s*CO[₂2]?[\s\-]?e(?:q(?:uivalent)?)?(?:[/\s]*kg)?"
     r"|kgCO2e?(?:/kg)?"
     r"|t(?:onnes?)?\s*CO[₂2][\s\-]?eq?"
-    r"|CO2e?\s*\d+\.?\d*\s*kg"
-    r"|\d+\.?\d*\s*kg\s*CO2"
-    r"|\d+\.?\d*\s*kgCO2e"
-    r"|CO2e?\d+\.?\d*kg"
-    r"|\d+\.?\d*kgCO2e"
     r")",
     re.IGNORECASE,
 )

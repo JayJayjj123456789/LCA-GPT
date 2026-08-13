@@ -87,7 +87,7 @@ def generate_pdf_report(data: dict) -> bytes:
     story.append(Spacer(1, 4 * mm))
 
     # Key metrics table
-    total_co2 = data.get("total_estimated_co2", 0)
+    total_co2 = float(data.get("total_estimated_co2") or 0)
     score = data.get("optimization_score", 0)
     metrics_data = [
         ["Metric", "Value"],
@@ -119,12 +119,14 @@ def generate_pdf_report(data: dict) -> bytes:
         mat_header = ["Material", "Amount", "Unit", "EF (kgCO₂e)", "Subtotal"]
         mat_rows = [mat_header]
         for m in data["materials"]:
-            subtotal = m["amount"] * m.get("emission_factor", 0)
+            amount = float(m.get("amount") or 0)
+            ef = float(m.get("emission_factor") or 0)
+            subtotal = amount * ef
             mat_rows.append([
                 m["name"],
-                f"{m['amount']:,.2f}",
+                f"{amount:,.2f}",
                 m.get("unit", ""),
-                f"{m.get('emission_factor', 0):,.4f}",
+                f"{ef:,.4f}",
                 f"{subtotal:,.2f}",
             ])
         mat_table = Table(mat_rows, colWidths=[35 * mm, 25 * mm, 20 * mm, 30 * mm, 30 * mm])
@@ -149,12 +151,14 @@ def generate_pdf_report(data: dict) -> bytes:
         en_header = ["Type", "Usage", "Unit", "EF (kgCO₂e)", "Subtotal"]
         en_rows = [en_header]
         for e in data["energy"]:
-            subtotal = e["usage"] * e.get("emission_factor", 0)
+            usage = float(e.get("usage") or 0)
+            ef = float(e.get("emission_factor") or 0)
+            subtotal = usage * ef
             en_rows.append([
                 e["type"],
-                f"{e['usage']:,.2f}",
+                f"{usage:,.2f}",
                 e.get("unit", "kWh"),
-                f"{e.get('emission_factor', 0):,.4f}",
+                f"{ef:,.4f}",
                 f"{subtotal:,.2f}",
             ])
         en_table = Table(en_rows, colWidths=[35 * mm, 25 * mm, 20 * mm, 30 * mm, 30 * mm])
@@ -179,12 +183,14 @@ def generate_pdf_report(data: dict) -> bytes:
         tr_header = ["Method", "Distance", "Unit", "EF (kgCO₂e)", "Subtotal"]
         tr_rows = [tr_header]
         for t in data["transport"]:
-            subtotal = t["distance"] * t.get("emission_factor", 0)
+            distance = float(t.get("distance") or 0)
+            ef = float(t.get("emission_factor") or 0)
+            subtotal = distance * ef
             tr_rows.append([
                 t["method"],
-                f"{t['distance']:,.2f}",
+                f"{distance:,.2f}",
                 t.get("unit", "km"),
-                f"{t.get('emission_factor', 0):,.4f}",
+                f"{ef:,.4f}",
                 f"{subtotal:,.2f}",
             ])
         tr_table = Table(tr_rows, colWidths=[35 * mm, 25 * mm, 20 * mm, 30 * mm, 30 * mm])

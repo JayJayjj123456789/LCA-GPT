@@ -70,7 +70,7 @@ class TestAnalyzeEnterpriseCarbon:
 
     @patch("app.analyzer.openai.OpenAI")
     def test_analyze_long_text(self, mock_openai):
-        """Should handle very long text (truncated to 6000 chars)."""
+        """Should handle very long text (truncated to 8000 chars)."""
         mock_client = MagicMock()
         mock_choice = MagicMock()
         mock_choice.message.content = '{"summary": "long text"}'

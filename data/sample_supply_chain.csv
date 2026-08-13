@@ -1,0 +1,22 @@
+Material,Quantity,Unit,Supplier,Country,Carbon_Intensity_kgCO2_per_kg,Recycled_Content_%,Notes
+Steel Rebar,800,kg,Green Steel Industries,Thailand,1.85,25,Construction grade rebar A36
+Concrete Mix,2500,kg,EcoCrete Co.,Thailand,0.12,0,Portland cement blend
+Aluminum Profiles,150,kg,Thai Aluminum Ltd.,Thailand,8.5,40,6063-T5 extrusion
+Copper Cables,50,kg,Metro Copper,Vietnam,4.2,15,Electrical grade 99.9%
+Plastic Sheets HDPE,200,kg,Polymer Solutions,Malaysia,2.8,30,Food-grade HDPE
+Glass Panels,500,kg,Crystal Glass Works,Thailand,0.9,20,Tempered safety glass
+Timber Beams,300,kg,Sustainable Forestry,Laos,0.05,0,FSC certified hardwood
+Paint Coating,80,kg,Green Paints Ltd.,Thailand,3.5,0,Low-VOC acrylic paint
+Insulation Foam,120,kg,Thermal Systems,China,5.8,0,Polyurethane rigid foam
+Ceramic Tiles,400,kg,Thai Ceramics,Thailand,0.65,10,Porcelain floor tiles
+
+Transport_Mode,Distance_km,Cargo_Weight_kg,Fuel_Type,Emission_Factor_kgCO2_per_ton_km
+Truck,350,4500,Diesel,0.062
+Ship,1200,500,Heavy Fuel Oil,0.011
+Rail,800,1000,Electric,0.022
+
+Energy_Type,Usage_Amount,Unit,Source,Emission_Factor_kgCO2_per_kWh
+Electricity,3500,kWh,Grid Mix Thailand,0.52
+Natural Gas,1200,m3,Pipeline,2.1
+Solar PV,500,kWh,On-site,0.02
+Diesel Generator,80,liters,Backup power,2.68

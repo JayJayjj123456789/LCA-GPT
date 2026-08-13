@@ -41,8 +41,6 @@ class TestFullFlow:
         ingest_analysis_to_graph(parsed)
         mock_driver.close.assert_called_once()
 
-        os.remove(sample_pdf)
-
     @patch("app.database.get_driver")
     def test_analysis_json_structure(self, mock_get_driver, sample_analysis_result):
         """Verify analysis JSON has all required fields."""
