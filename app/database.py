@@ -10,15 +10,20 @@ def get_driver():
 
 
 def reset_neo4j_data() -> bool:
-    driver = get_driver()
+    if not NEO4J_URI:
+        logger.info("NEO4J_URI not configured — skipping graph reset")
+        return False
+    driver = None
     try:
+        driver = get_driver()
         with driver.session() as session:
             session.run("MATCH (n) DETACH DELETE n")
         return True
     except Exception as e:
         raise RuntimeError(f"Database Reset Error: {e}")
     finally:
-        driver.close()
+        if driver:
+            driver.close()
 
 
 def _filter_valid(items: list[dict], key: str) -> list[dict]:
@@ -39,7 +44,10 @@ def _sanitize_item(item: dict) -> dict:
 
 
 def ingest_analysis_to_graph(json_data: dict) -> None:
-    driver = get_driver()
+    if not NEO4J_URI:
+        logger.info("NEO4J_URI not configured — skipping graph ingestion")
+        return
+    driver = None
     try:
         raw_materials = json_data.get("materials", [])
         raw_energy = json_data.get("energy", [])
@@ -111,13 +119,22 @@ def ingest_analysis_to_graph(json_data: dict) -> None:
                     transport=transport,
                 )
     finally:
-        driver.close()
+        if driver:
+            driver.close()
 
 
 def get_graph_data():
-    """Get graph data as raw dicts (for FastAPI/React)."""
-    driver = get_driver()
+    """Get graph data as raw dicts (for FastAPI/React).
+
+    Returns empty graph when Neo4j is not configured so the frontend
+    falls back to building the graph from in-memory audit data.
+    """
+    if not NEO4J_URI:
+        logger.info("NEO4J_URI not configured — returning empty graph")
+        return [], []
+    driver = None
     try:
+        driver = get_driver()
         nodes, edges = [], []
         with driver.session() as session:
             result = session.run("MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 200")
@@ -156,5 +173,6 @@ def get_graph_data():
     except Exception:
         return [], []
     finally:
-        driver.close()
+        if driver:
+            driver.close()
 
