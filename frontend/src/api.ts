@@ -50,6 +50,11 @@ export const getGraph = async (): Promise<GraphData> => {
   return data
 }
 
+export const getAllAudits = async (): Promise<AnalysisData[]> => {
+  const { data } = await api.get<AnalysisData[]>('/audits')
+  return data
+}
+
 export const clearGraph = async (): Promise<void> => {
   await api.delete('/graph')
 }

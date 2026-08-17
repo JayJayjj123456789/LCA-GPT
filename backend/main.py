@@ -269,6 +269,18 @@ async def chat(payload: dict):
 
 # ─── Audits ─────────────────────────────────────────────────────
 
+@app.get("/api/audits")
+async def list_audits():
+    """List all stored audits, newest first."""
+    try:
+        from app.vector_store import get_full_audits
+        audits = get_full_audits()
+        return JSONResponse(content=list(reversed(audits)))
+    except Exception as e:
+        logger.error(f"List audits error: {e}")
+        raise HTTPException(500, str(e))
+
+
 @app.get("/api/audits/similar")
 async def similar_audits(materials: str = Query(...)):
     material_list = [m.strip() for m in materials.split(",") if m.strip()]

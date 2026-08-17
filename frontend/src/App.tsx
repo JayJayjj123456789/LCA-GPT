@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Sidebar from './components/Sidebar'
 import DashboardView from './views/DashboardView'
 import AuditView from './views/AuditView'
@@ -6,7 +6,7 @@ import GraphView from './views/GraphView'
 import StrategiesView from './views/StrategiesView'
 import ReportsView from './views/ReportsView'
 import LiveDemoView from './views/LiveDemoView'
-import type { AnalysisData } from './api'
+import { getAllAudits, type AnalysisData } from './api'
 
 export type NavView = 'dashboard' | 'audit' | 'graph' | 'strategies' | 'reports' | 'livedemo'
 
@@ -15,6 +15,12 @@ export default function App() {
   const [audits, setAudits]     = useState<AnalysisData[]>([])
   const [graphKey, setGraphKey] = useState(0)
   const [activeView, setActiveView] = useState<NavView>('dashboard')
+
+  useEffect(() => {
+    getAllAudits()
+      .then(loaded => { if (loaded.length > 0) { setAudits(loaded); setAnalysis(loaded[0]) } })
+      .catch(() => {})
+  }, [])
 
   const handleAnalyzed = (data: AnalysisData) => {
     setAnalysis(data)

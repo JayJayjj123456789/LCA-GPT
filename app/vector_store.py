@@ -11,8 +11,39 @@ _FULL_FILE  = os.path.join(_DATA_DIR, "audits_full.json")
 
 os.makedirs(_DATA_DIR, exist_ok=True)
 
+# ── PostgreSQL storage (primary when DATABASE_URL is set) ─────────────────────
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+_DATABASE_URL = os.getenv("DATABASE_URL")
+_PG_READY = False
+
+
+def _pg_enabled() -> bool:
+    return bool(_DATABASE_URL)
+
+
+def _pg_conn():
+    import psycopg
+    return psycopg.connect(_DATABASE_URL)
+
+
+def _pg_ensure() -> None:
+    global _PG_READY
+    if _PG_READY:
+        return
+    with _pg_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audits (
+                id         BIGSERIAL PRIMARY KEY,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                data       JSONB NOT NULL
+            )
+            """
+        )
+    _PG_READY = True
+
+
+# ── JSON file fallback (when DATABASE_URL is unset) ───────────────────────────
 
 def _load(path: str) -> list:
     try:
@@ -30,12 +61,33 @@ def _save(path: str, data: list) -> None:
 # ── Full audit storage ────────────────────────────────────────────────────────
 
 def store_full_audit(data: dict) -> None:
+    if _pg_enabled():
+        try:
+            _pg_ensure()
+            with _pg_conn() as conn:
+                conn.execute(
+                    "INSERT INTO audits (data) VALUES (%s)",
+                    (json.dumps(data, ensure_ascii=False),),
+                )
+            name = data.get("project_info", {}).get("name", "Unknown")
+            logger.info(f"Stored full audit '{name}' in PostgreSQL")
+            return
+        except Exception as e:
+            logger.error(f"PostgreSQL save failed, falling back to file: {e}")
     audits = _load(_FULL_FILE)
     audits.append(data)
     _save(_FULL_FILE, audits)
 
 
 def get_full_audits() -> list:
+    if _pg_enabled():
+        try:
+            _pg_ensure()
+            with _pg_conn() as conn:
+                rows = conn.execute("SELECT data FROM audits ORDER BY id").fetchall()
+            return [json.loads(r[0]) for r in rows]
+        except Exception as e:
+            logger.error(f"PostgreSQL read failed, falling back to file: {e}")
     return _load(_FULL_FILE)
 
 
@@ -47,7 +99,14 @@ def store_audit(
     total_co2: float,
     materials: list[str],
 ) -> None:
-    """Store a lightweight audit record for similarity search."""
+    """Store a lightweight audit record for similarity search.
+
+    With PostgreSQL the record is derived from the full audit at query time,
+    so this is a no-op there (full audits are persisted by store_full_audit).
+    """
+    if _pg_enabled():
+        logger.info(f"PostgreSQL mode: skipping lightweight record for '{project_name}'")
+        return
     store = _load(_STORE_FILE)
     record = {
         "project_name": project_name,
@@ -60,9 +119,24 @@ def store_audit(
     logger.info(f"Stored audit '{project_name}' (total={len(store)})")
 
 
+def _records() -> list[dict]:
+    """Return similarity records, deriving them from full audits when in PG mode."""
+    if _pg_enabled():
+        records = []
+        for d in get_full_audits():
+            records.append({
+                "project_name": d.get("project_info", {}).get("name", "Unknown"),
+                "summary":      d.get("summary", ""),
+                "total_co2":    d.get("total_estimated_co2", 0),
+                "materials":    [m.get("name") for m in d.get("materials", []) if m.get("name")],
+            })
+        return records
+    return _load(_STORE_FILE)
+
+
 def find_similar_audits(materials: list[str], top_k: int = 3) -> list[dict]:
     """Find past audits using TF bag-of-words cosine similarity."""
-    store = _load(_STORE_FILE)
+    store = _records()
     if not store:
         return []
 
