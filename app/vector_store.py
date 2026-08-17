@@ -85,7 +85,7 @@ def get_full_audits() -> list:
             _pg_ensure()
             with _pg_conn() as conn:
                 rows = conn.execute("SELECT data FROM audits ORDER BY id").fetchall()
-            return [json.loads(r[0]) for r in rows]
+            return [r[0] if isinstance(r[0], dict) else json.loads(r[0]) for r in rows]
         except Exception as e:
             logger.error(f"PostgreSQL read failed, falling back to file: {e}")
     return _load(_FULL_FILE)
