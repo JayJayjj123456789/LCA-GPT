@@ -1,8 +1,60 @@
 import axios from 'axios'
 
+const TOKEN_KEY = 'lca_token'
+
+export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
+export const setToken = (t: string | null): void => {
+  if (t) localStorage.setItem(TOKEN_KEY, t)
+  else localStorage.removeItem(TOKEN_KEY)
+}
+
 const api = axios.create({
   baseURL: '/api',
 })
+
+api.interceptors.request.use(cfg => {
+  const t = getToken()
+  if (t) cfg.headers.Authorization = `Bearer ${t}`
+  return cfg
+})
+
+api.interceptors.response.use(
+  res => res,
+  err => {
+    if (err.response?.status === 401 && !err.config?.url?.includes('/auth/')) {
+      setToken(null)
+      window.location.reload()
+    }
+    return Promise.reject(err)
+  },
+)
+
+export interface AuthResult {
+  token: string
+  email: string
+}
+
+export const register = async (email: string, password: string): Promise<AuthResult> => {
+  const { data } = await api.post<AuthResult>('/auth/register', { email, password })
+  setToken(data.token)
+  return data
+}
+
+export const login = async (email: string, password: string): Promise<AuthResult> => {
+  const { data } = await api.post<AuthResult>('/auth/login', { email, password })
+  setToken(data.token)
+  return data
+}
+
+export const logout = async (): Promise<void> => {
+  try { await api.post('/auth/logout') } catch { /* ignore */ }
+  setToken(null)
+}
+
+export const getMe = async (): Promise<string> => {
+  const { data } = await api.get<{ email: string }>('/auth/me')
+  return data.email
+}
 
 export interface AnalysisData {
   project_info: {

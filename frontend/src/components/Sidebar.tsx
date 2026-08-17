@@ -6,6 +6,8 @@ import ConfirmModal from './ConfirmModal'
 
 interface Props {
   analysis: AnalysisData | null
+  user: string
+  onLogout: () => void
   onCleared: () => void
   activeView: NavView
   onNavigate: (view: NavView) => void
@@ -25,7 +27,7 @@ const FOOTER_NAV = [
   { label: 'Documentation',  icon: 'menu_book'            },
 ]
 
-export default function Sidebar({ analysis, onCleared, activeView, onNavigate }: Props) {
+export default function Sidebar({ analysis, user, onLogout, onCleared, activeView, onNavigate }: Props) {
   const [showClearModal, setShowClearModal] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -91,6 +93,23 @@ export default function Sidebar({ analysis, onCleared, activeView, onNavigate }:
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(192,57,43,0.16)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(192,57,43,0.08)' }}>
           <span className="material-symbols-outlined" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>delete_sweep</span>Clear Data
+        </button>
+      </div>
+      {/* ── User + Logout ── */}
+      <div className="flex items-center gap-2 px-2 pt-3" style={{ borderTop: '1px solid rgba(68,72,65,0.4)' }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(139,157,131,0.15)' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#8b9d83' }}>account_circle</span>
+        </div>
+        <span className="flex-1 truncate" style={{ color: '#c4c8be', fontSize: 12 }} title={user}>{user}</span>
+        <button
+          onClick={onLogout}
+          title="Log out"
+          className="p-1.5 rounded-lg cursor-pointer transition-colors"
+          style={{ color: '#8e9289' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(49,55,42,0.6)'; (e.currentTarget as HTMLElement).style.color = '#c4c8be' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#8e9289' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>logout</span>
         </button>
       </div>
       {/* ── Footer Nav ── */}

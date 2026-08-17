@@ -10,20 +10,20 @@ from typing import Optional
 _CACHE: dict[str, str] = {}
 
 
-def get_cache_key(question: str) -> str:
-    """Generate cache key from question."""
-    return hashlib.md5(question.lower().strip().encode(), usedforsecurity=False).hexdigest()
+def get_cache_key(question: str, owner: str = "") -> str:
+    """Generate cache key from question and owner (keeps users' answers separate)."""
+    return hashlib.md5(f"{owner}|{question.lower().strip()}".encode(), usedforsecurity=False).hexdigest()
 
 
-def get_cached_response(question: str) -> Optional[str]:
+def get_cached_response(question: str, owner: str = "") -> Optional[str]:
     """Get cached response if exists."""
-    key = get_cache_key(question)
+    key = get_cache_key(question, owner)
     return _CACHE.get(key)
 
 
-def cache_response(question: str, answer: str) -> None:
+def cache_response(question: str, answer: str, owner: str = "") -> None:
     """Cache a chat response."""
-    key = get_cache_key(question)
+    key = get_cache_key(question, owner)
     _CACHE[key] = answer
 
 

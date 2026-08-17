@@ -162,7 +162,7 @@ def analyze_enterprise_carbon(text: str) -> str | None:
 
 
 
-def save_audit_to_memory(data: dict) -> None:
+def save_audit_to_memory(data: dict, owner: str | None = None) -> None:
     """Store completed audit in vector store for future reference."""
     try:
         materials = [m["name"] for m in data.get("materials", [])]
@@ -176,10 +176,10 @@ def save_audit_to_memory(data: dict) -> None:
         logger.error(f"Failed to store audit: {e}")
 
 
-def find_past_audits(materials: list[str]) -> list[dict]:
+def find_past_audits(materials: list[str], owner: str | None = None) -> list[dict]:
     """Find similar past audits for reference."""
     try:
-        return find_similar_audits(materials)
+        return find_similar_audits(materials, owner=owner)
     except Exception as e:
         logger.error(f"Failed to search past audits: {e}")
         return []

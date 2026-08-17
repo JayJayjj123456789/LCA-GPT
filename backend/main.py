@@ -6,10 +6,21 @@ import os
 import tempfile
 
 import uvicorn
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+
+from app.auth import (
+    create_session,
+    create_user,
+    delete_session,
+    find_user,
+    get_session_email,
+    require_user,
+    validate_registration,
+    verify_password,
+)
 
 from app.analyzer import (
     analyze_enterprise_carbon,
@@ -53,6 +64,56 @@ app.add_middleware(
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "app": "LCA-GPT Enterprise API"}
+
+
+# ─── Authentication ─────────────────────────────────────────────
+
+def _auth_payload(email: str) -> dict:
+    return {"token": create_session(email), "email": email}
+
+
+@app.post("/api/auth/register")
+async def register(payload: dict):
+    """Register a new user. The first registered user claims legacy audits."""
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+    error = validate_registration(email, password)
+    if error:
+        raise HTTPException(400, error)
+    try:
+        if find_user(email):
+            raise HTTPException(409, "An account with this email already exists")
+        create_user(email, password)
+        logger.info(f"Registered new user: {email}")
+        return _auth_payload(email)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Register error: {e}")
+        raise HTTPException(503, "Database not configured")
+
+
+@app.post("/api/auth/login")
+async def login(payload: dict):
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+    user = find_user(email)
+    if not user or not verify_password(password, user["password_hash"]):
+        raise HTTPException(401, "Invalid email or password")
+    logger.info(f"User logged in: {email}")
+    return _auth_payload(email)
+
+
+@app.post("/api/auth/logout")
+async def logout(authorization: str = Header(None)):
+    if authorization and authorization.lower().startswith("bearer "):
+        delete_session(authorization.split(" ", 1)[1].strip())
+    return {"status": "ok"}
+
+
+@app.get("/api/auth/me")
+async def me(user: str = Depends(require_user)):
+    return {"email": user}
 
 
 # ─── Analyze ────────────────────────────────────────────────────
@@ -102,7 +163,7 @@ def _extract_text_from_excel(file_path: str) -> str:
 
 
 @app.post("/api/analyze")
-async def analyze_file(file: UploadFile = File(...)):
+async def analyze_file(file: UploadFile = File(...), user: str = Depends(require_user)):
     """Upload PDF or Excel, extract text, run AI carbon audit, ingest to graph."""
     fname = (file.filename or "").lower()
     if not fname:
@@ -146,10 +207,10 @@ async def analyze_file(file: UploadFile = File(...)):
             ingest_analysis_to_graph(data)
         except Exception as neo4j_err:
             logger.warning(f"Neo4j ingestion skipped: {neo4j_err}")
-        save_audit_to_memory(data)
+        save_audit_to_memory(data, user)
         try:
             from app.vector_store import store_full_audit
-            store_full_audit(data)
+            store_full_audit(data, owner=user)
         except Exception as store_err:
             logger.warning(f"Vector store save failed (non-fatal): {store_err}")
 
@@ -176,7 +237,7 @@ async def analyze_file(file: UploadFile = File(...)):
 # ─── Graph ──────────────────────────────────────────────────────
 
 @app.get("/api/graph")
-async def get_graph():
+async def get_graph(user: str = Depends(require_user)):
     """Get supply chain graph nodes and edges from Neo4j."""
     try:
         nodes, edges = get_graph_data()
@@ -187,7 +248,7 @@ async def get_graph():
 
 
 @app.delete("/api/graph")
-async def clear_graph():
+async def clear_graph(user: str = Depends(require_user)):
     """Clear all data from Neo4j graph."""
     try:
         reset_neo4j_data()
@@ -207,7 +268,7 @@ def _chart_to_json(fig) -> dict:
 
 
 @app.post("/api/charts/hotspot")
-async def chart_hotspot(data: dict):
+async def chart_hotspot(data: dict, user: str = Depends(require_user)):
     try:
         fig = carbon_hotspot_chart(data.get("materials", []))
         return JSONResponse(content=_chart_to_json(fig))
@@ -216,7 +277,7 @@ async def chart_hotspot(data: dict):
 
 
 @app.post("/api/charts/pie")
-async def chart_pie(data: dict):
+async def chart_pie(data: dict, user: str = Depends(require_user)):
     try:
         fig = carbon_breakdown_pie(data)
         return JSONResponse(content=_chart_to_json(fig))
@@ -225,7 +286,7 @@ async def chart_pie(data: dict):
 
 
 @app.post("/api/charts/sankey")
-async def chart_sankey(data: dict):
+async def chart_sankey(data: dict, user: str = Depends(require_user)):
     try:
         fig = carbon_sankey_diagram(data)
         return JSONResponse(content=_chart_to_json(fig))
@@ -236,7 +297,7 @@ async def chart_sankey(data: dict):
 # ─── Report ─────────────────────────────────────────────────────
 
 @app.post("/api/reports/pdf")
-async def generate_report(data: dict):
+async def generate_report(data: dict, user: str = Depends(require_user)):
     try:
         pdf_bytes = generate_pdf_report(data)
         project_name = data.get("project_info", {}).get("name", "report")
@@ -254,14 +315,14 @@ async def generate_report(data: dict):
 # ─── Chat ───────────────────────────────────────────────────────
 
 @app.post("/api/chat")
-async def chat(payload: dict):
+async def chat(payload: dict, user: str = Depends(require_user)):
     question = payload.get("question", "").strip()
     if not question:
         raise HTTPException(400, "Question is required")
 
     try:
         from backend.graph_rag import ask_graph
-        answer = ask_graph(question)
+        answer = ask_graph(question, owner=user)
         return {"answer": answer}
     except Exception as e:
         logger.error(f"Chat error: {e}")
@@ -271,11 +332,11 @@ async def chat(payload: dict):
 # ─── Audits ─────────────────────────────────────────────────────
 
 @app.get("/api/audits")
-async def list_audits():
+async def list_audits(user: str = Depends(require_user)):
     """List all stored audits, newest first."""
     try:
         from app.vector_store import get_full_audits
-        audits = get_full_audits()
+        audits = get_full_audits(user)
         return JSONResponse(content=list(reversed(audits)))
     except Exception as e:
         logger.error(f"List audits error: {e}")
@@ -283,13 +344,13 @@ async def list_audits():
 
 
 @app.get("/api/audits/similar")
-async def similar_audits(materials: str = Query(...)):
+async def similar_audits(materials: str = Query(...), user: str = Depends(require_user)):
     material_list = [m.strip() for m in materials.split(",") if m.strip()]
     if not material_list:
         raise HTTPException(400, "At least one material is required")
 
     try:
-        results = find_past_audits(material_list)
+        results = find_past_audits(material_list, owner=user)
         return JSONResponse(content=results)
     except Exception as e:
         raise HTTPException(500, str(e))
@@ -298,7 +359,7 @@ async def similar_audits(materials: str = Query(...)):
 # ─── Mathematical Analysis ──────────────────────────────────────
 
 @app.post("/api/math/matrix-lca")
-async def matrix_lca_analysis(data: dict):
+async def matrix_lca_analysis(data: dict, user: str = Depends(require_user)):
     """Run full Heijungs matrix LCA: h = Q·B·A⁻¹·f"""
     try:
         from app.math.matrix_lca import TechnologyMatrix
@@ -311,7 +372,7 @@ async def matrix_lca_analysis(data: dict):
 
 
 @app.post("/api/math/leontief")
-async def leontief_analysis(data: dict):
+async def leontief_analysis(data: dict, user: str = Depends(require_user)):
     """Run Leontief EEIO-LCA: x = (I-A)⁻¹·y with power series visualization."""
     try:
         from app.math.leontief import LeontiefModel
@@ -337,7 +398,7 @@ async def leontief_analysis(data: dict):
 
 
 @app.post("/api/math/topsis")
-async def topsis_analysis(payload: dict):
+async def topsis_analysis(payload: dict, user: str = Depends(require_user)):
     """Run TOPSIS multi-criteria decision analysis."""
     try:
         from app.math.topsis import TOPSIS
@@ -371,7 +432,7 @@ async def topsis_analysis(payload: dict):
 
 
 @app.post("/api/math/monte-carlo")
-async def monte_carlo_analysis(data: dict):
+async def monte_carlo_analysis(data: dict, user: str = Depends(require_user)):
     """Run full-chain Monte Carlo uncertainty propagation."""
     try:
         from app.math.matrix_lca import TechnologyMatrix
@@ -391,7 +452,7 @@ async def monte_carlo_analysis(data: dict):
 
 
 @app.post("/api/math/sensitivity")
-async def sensitivity_analysis(data: dict):
+async def sensitivity_analysis(data: dict, user: str = Depends(require_user)):
     """Run perturbation-based sensitivity analysis."""
     try:
         from app.math.matrix_lca import TechnologyMatrix
@@ -413,7 +474,7 @@ async def sensitivity_analysis(data: dict):
 
 
 @app.post("/api/math/nonlinear")
-async def nonlinear_comparison(data: dict):
+async def nonlinear_comparison(data: dict, user: str = Depends(require_user)):
     """Compare linear vs non-linear LCA models."""
     try:
         from app.math.matrix_lca import TechnologyMatrix
@@ -432,7 +493,7 @@ async def nonlinear_comparison(data: dict):
 # ─── Advanced Charts ────────────────────────────────────────────
 
 @app.post("/api/charts/tornado")
-async def chart_tornado(data: dict):
+async def chart_tornado(data: dict, user: str = Depends(require_user)):
     """Generate tornado sensitivity chart."""
     try:
         from app.math.matrix_lca import TechnologyMatrix
@@ -452,7 +513,7 @@ async def chart_tornado(data: dict):
 
 
 @app.post("/api/charts/monte-carlo")
-async def chart_monte_carlo(data: dict):
+async def chart_monte_carlo(data: dict, user: str = Depends(require_user)):
     """Generate Monte Carlo histogram chart."""
     try:
         from app.math.matrix_lca import TechnologyMatrix
@@ -473,7 +534,7 @@ async def chart_monte_carlo(data: dict):
 
 
 @app.post("/api/charts/waterfall")
-async def chart_waterfall(data: dict):
+async def chart_waterfall(data: dict, user: str = Depends(require_user)):
     """Generate waterfall contribution chart."""
     try:
         from app.math.matrix_lca import TechnologyMatrix

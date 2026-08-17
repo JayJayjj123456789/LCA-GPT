@@ -40,6 +40,29 @@ def _pg_ensure() -> None:
             )
             """
         )
+        # ── Multi-user migration (idempotent) ─────────────────────────────
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id            BIGSERIAL PRIMARY KEY,
+                email         TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sessions (
+                token      TEXT PRIMARY KEY,
+                user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                expires_at TIMESTAMPTZ NOT NULL
+            )
+            """
+        )
+        conn.execute("ALTER TABLE audits ADD COLUMN IF NOT EXISTS owner_id TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_audits_owner ON audits(owner_id)")
     _PG_READY = True
 
 
@@ -60,17 +83,17 @@ def _save(path: str, data: list) -> None:
 
 # ── Full audit storage ────────────────────────────────────────────────────────
 
-def store_full_audit(data: dict) -> None:
+def store_full_audit(data: dict, owner: str | None = None) -> None:
     if _pg_enabled():
         try:
             _pg_ensure()
             with _pg_conn() as conn:
                 conn.execute(
-                    "INSERT INTO audits (data) VALUES (%s)",
-                    (json.dumps(data, ensure_ascii=False),),
+                    "INSERT INTO audits (data, owner_id) VALUES (%s, %s)",
+                    (json.dumps(data, ensure_ascii=False), owner),
                 )
             name = data.get("project_info", {}).get("name", "Unknown")
-            logger.info(f"Stored full audit '{name}' in PostgreSQL")
+            logger.info(f"Stored full audit '{name}' in PostgreSQL (owner={owner})")
             return
         except Exception as e:
             logger.error(f"PostgreSQL save failed, falling back to file: {e}")
@@ -79,12 +102,21 @@ def store_full_audit(data: dict) -> None:
     _save(_FULL_FILE, audits)
 
 
-def get_full_audits() -> list:
+def get_full_audits(owner: str | None = None) -> list:
+    """Return audits owned by `owner` (all audits when owner is None)."""
     if _pg_enabled():
         try:
             _pg_ensure()
             with _pg_conn() as conn:
-                rows = conn.execute("SELECT data FROM audits ORDER BY id").fetchall()
+                if owner is None:
+                    rows = conn.execute(
+                        "SELECT data FROM audits ORDER BY id"
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        "SELECT data FROM audits WHERE owner_id = %s ORDER BY id",
+                        (owner,),
+                    ).fetchall()
             return [r[0] if isinstance(r[0], dict) else json.loads(r[0]) for r in rows]
         except Exception as e:
             logger.error(f"PostgreSQL read failed, falling back to file: {e}")
@@ -119,11 +151,11 @@ def store_audit(
     logger.info(f"Stored audit '{project_name}' (total={len(store)})")
 
 
-def _records() -> list[dict]:
+def _records(owner: str | None = None) -> list[dict]:
     """Return similarity records, deriving them from full audits when in PG mode."""
     if _pg_enabled():
         records = []
-        for d in get_full_audits():
+        for d in get_full_audits(owner):
             records.append({
                 "project_name": d.get("project_info", {}).get("name", "Unknown"),
                 "summary":      d.get("summary", ""),
@@ -134,9 +166,9 @@ def _records() -> list[dict]:
     return _load(_STORE_FILE)
 
 
-def find_similar_audits(materials: list[str], top_k: int = 3) -> list[dict]:
+def find_similar_audits(materials: list[str], top_k: int = 3, owner: str | None = None) -> list[dict]:
     """Find past audits using TF bag-of-words cosine similarity."""
-    store = _records()
+    store = _records(owner)
     if not store:
         return []
 

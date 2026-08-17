@@ -27,9 +27,9 @@ def _get_driver():
     return GraphDatabase.driver(_uri, auth=(_user, _password))
 
 
-def _build_context_from_memory() -> str:
+def _build_context_from_memory(owner: str | None = None) -> str:
     from app.vector_store import get_full_audits
-    audits = get_full_audits()
+    audits = get_full_audits(owner)
     if not audits:
         return ""
     parts = []
@@ -50,15 +50,16 @@ def _build_context_from_memory() -> str:
     return "\n".join(parts)
 
 
-def ask_graph(question: str) -> str:
+def ask_graph(question: str, owner: str | None = None) -> str:
     """Answer question using Neo4j graph context, falling back to in-memory audits.
 
     FIX 1: Add keyword-based filtering to improve retrieval accuracy.
     FIX 2: Add response caching to improve performance (3.5s → 0.2s for cached).
+    FIX 3: Context and cache are scoped per user (multi-user).
     """
     # Check cache first
     from backend.cache import get_cached_response, cache_response
-    cached = get_cached_response(question)
+    cached = get_cached_response(question, owner or "")
     if cached:
         logger.info(f"Cache HIT for question: {question[:50]}...")
         return cached
@@ -115,7 +116,7 @@ def ask_graph(question: str) -> str:
 
     # Fallback to in-memory audits if Neo4j empty or failed
     if not context:
-        context = _build_context_from_memory()
+        context = _build_context_from_memory(owner)
 
     if not context:
         context = "ไม่มีข้อมูล audit ในระบบขณะนี้"
@@ -172,7 +173,7 @@ Be helpful, concise, and professional. Always ground your answer in the provided
 
         # Cache the response before returning
         from backend.cache import cache_response
-        cache_response(question, answer)
+        cache_response(question, answer, owner or "")
 
         return answer
     except Exception as e:
