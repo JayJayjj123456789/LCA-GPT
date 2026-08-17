@@ -2,7 +2,7 @@ services:
   - type: web
     name: lca-gpt-enterprise
     runtime: docker
-    repo: https://github.com/REPLACE_ME/lca-gpt
+    repo: https://github.com/JayJayjj123456789/LCA-GPT.git
     branch: main
     plan: free
     dockerfilePath: ./Dockerfile
