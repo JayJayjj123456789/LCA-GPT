@@ -1,11 +1,9 @@
 """LCA-GPT — Graph RAG Chat System"""
 
 import logging
-import os
 
 import openai
 from dotenv import load_dotenv
-from neo4j import GraphDatabase
 
 from app.config import ACTIVE_API_KEY, ACTIVE_MODEL, ACTIVE_BASE_URL
 
@@ -13,18 +11,10 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-_uri = os.getenv("NEO4J_URI")
-_user = os.getenv("NEO4J_USERNAME")
-_password = os.getenv("NEO4J_PASSWORD")
-
 _client = openai.OpenAI(
     base_url=ACTIVE_BASE_URL,
     api_key=ACTIVE_API_KEY,
 )
-
-
-def _get_driver():
-    return GraphDatabase.driver(_uri, auth=(_user, _password))
 
 
 def _build_context_from_memory(owner: str | None = None) -> str:
@@ -51,11 +41,10 @@ def _build_context_from_memory(owner: str | None = None) -> str:
 
 
 def ask_graph(question: str, owner: str | None = None) -> str:
-    """Answer question using Neo4j graph context, falling back to in-memory audits.
+    """Answer question from the user's stored audits (per-user context).
 
-    FIX 1: Add keyword-based filtering to improve retrieval accuracy.
-    FIX 2: Add response caching to improve performance (3.5s → 0.2s for cached).
-    FIX 3: Context and cache are scoped per user (multi-user).
+    FIX 1: Response caching for performance (3.5s → 0.2s for cached).
+    FIX 2: Context and cache are scoped per user (multi-user).
     """
     # Check cache first
     from backend.cache import get_cached_response, cache_response
@@ -65,58 +54,7 @@ def ask_graph(question: str, owner: str | None = None) -> str:
         return cached
 
     logger.info(f"Cache MISS for question: {question[:50]}...")
-    context = ""
-
-    # Extract key terms from question for better retrieval
-    question_lower = question.lower()
-    query_keywords = {
-        'material': ['material', 'วัสดุ', 'steel', 'aluminum', 'plastic', 'เหล็ก', 'อลูมิเนียม', 'พลาสติก'],
-        'energy': ['energy', 'พลังงาน', 'electricity', 'diesel', 'fuel', 'ไฟฟ้า', 'น้ำมัน'],
-        'transport': ['transport', 'ขนส่ง', 'logistics', 'truck', 'รถ', 'delivery'],
-        'emission': ['emission', 'co2', 'carbon', 'คาร์บอน', 'ปล่อย'],
-        'supplier': ['supplier', 'ผู้จำหน่าย', 'ซัพพลายเออร์'],
-    }
-
-    # Determine query focus
-    focus_areas = []
-    for area, keywords in query_keywords.items():
-        if any(kw in question_lower for kw in keywords):
-            focus_areas.append(area)
-
-    # Try Neo4j first with improved filtering
-    driver = None
-    try:
-        driver = _get_driver()
-        with driver.session() as session:
-            # Build dynamic Cypher query based on focus areas
-            if 'material' in focus_areas:
-                cypher = "MATCH (n:Material)-[r]->(m) RETURN n, type(r) as rel_type, properties(n) as p_n, properties(m) as p_m LIMIT 200"
-            elif 'energy' in focus_areas:
-                cypher = "MATCH (n:Energy)-[r]->(m) RETURN n, type(r) as rel_type, properties(n) as p_n, properties(m) as p_m LIMIT 200"
-            elif 'transport' in focus_areas:
-                cypher = "MATCH (n:Transport)-[r]->(m) RETURN n, type(r) as rel_type, properties(n) as p_n, properties(m) as p_m LIMIT 200"
-            else:
-                # Default: get all with higher limit
-                cypher = "MATCH (n)-[r]->(m) RETURN n, type(r) as rel_type, properties(n) as p_n, properties(m) as p_m LIMIT 500"
-
-            result = session.run(cypher)
-            parts = []
-            for record in result:
-                def fmt(props):
-                    name = props.get("name") or props.get("type") or props.get("method") or "Unknown"
-                    details = [f"{k}: {props[k]}" for k in ("amount","usage","distance","unit","emission_factor") if k in props]
-                    return f"{name}" + (f" [{', '.join(details)}]" if details else "")
-                parts.append(f"- {fmt(record['p_n'])} --({record['rel_type']})--> {fmt(record['p_m'])}")
-            context = "\n".join(parts)
-    except Exception as e:
-        logger.warning(f"Neo4j unavailable, using memory fallback: {e}")
-    finally:
-        if driver:
-            driver.close()
-
-    # Fallback to in-memory audits if Neo4j empty or failed
-    if not context:
-        context = _build_context_from_memory(owner)
+    context = _build_context_from_memory(owner)
 
     if not context:
         context = "ไม่มีข้อมูล audit ในระบบขณะนี้"

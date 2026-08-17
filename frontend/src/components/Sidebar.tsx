@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { clearGraph, downloadPdfReport } from '../api'
+import { deleteAllAudits, downloadPdfReport } from '../api'
 import type { AnalysisData } from '../api'
 import type { NavView } from '../App'
 import ConfirmModal from './ConfirmModal'
@@ -35,7 +35,7 @@ export default function Sidebar({ analysis, user, onLogout, onCleared, activeVie
 
   const handleConfirmClear = async () => {
     setShowClearModal(false)
-    await clearGraph()
+    await deleteAllAudits()
     onCleared()
   }
 
@@ -92,7 +92,7 @@ export default function Sidebar({ analysis, user, onLogout, onCleared, activeVie
           style={{ color: '#c0392b', border: '1px solid rgba(192,57,43,0.4)', background: 'rgba(192,57,43,0.08)', fontSize: 14 }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(192,57,43,0.16)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(192,57,43,0.08)' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>delete_sweep</span>Clear Data
+          <span className="material-symbols-outlined" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>delete_sweep</span>Delete Audits
         </button>
       </div>
       {/* ── User + Logout ── */}
@@ -131,9 +131,9 @@ export default function Sidebar({ analysis, user, onLogout, onCleared, activeVie
     <>
       <ConfirmModal
         open={showClearModal}
-        title="Clear All Data"
-        message="This will permanently clear all graph data and reset the session. Any unsaved audit results will be lost."
-        confirmLabel="Yes, Clear Data"
+        title="Delete All Audits"
+        message="This permanently deletes ALL of your audits from the database. This cannot be undone."
+        confirmLabel="Yes, Delete Everything"
         cancelLabel="Cancel"
         danger
         onConfirm={handleConfirmClear}

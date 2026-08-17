@@ -7,7 +7,6 @@ import ReactFlow, {
   type Edge,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { getGraph } from '../api'
 import type { AnalysisData } from '../api'
 
 interface Props {
@@ -16,14 +15,6 @@ interface Props {
 }
 
 /* Node colour palette — matches the Biophilic design token set */
-const NODE_PALETTE = [
-  '#8b9d83', // primary-container  (sage)
-  '#919e65', // tertiary-container (ochre)
-  '#7c3307', // secondary-container (terracotta)
-  '#272c20', // surface-container-high (dark)
-  '#b9ccb0', // primary
-  '#bfcd8f', // tertiary
-]
 
 function buildLocalGraph(analysis: AnalysisData): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = []
@@ -71,58 +62,15 @@ export default function GraphViz({ refreshKey, analysis }: Props) {
     setLoading(true)
     setError(false)
     try {
-      const data = await getGraph()
-
-      // Neo4j empty — build graph from local analysis data
-      if (data.nodes.length === 0 && analysis) {
+      // Graph is built locally from the loaded audit data
+      if (analysis) {
         const local = buildLocalGraph(analysis)
         setNodes(local.nodes)
         setEdges(local.edges)
-        setLoading(false)
-        return
+      } else {
+        setNodes([])
+        setEdges([])
       }
-
-      const flowNodes: Node[] = data.nodes.map((n, i) => ({
-        id:       n.id,
-        data:     { label: n.label },
-        position: {
-          x: 80 + (i % 4) * 220,
-          y: 60 + Math.floor(i / 4) * 100,
-        },
-        style: {
-          background:   n.color || NODE_PALETTE[i % NODE_PALETTE.length],
-          color:        '#10150b',
-          border:       'none',
-          borderRadius: 10,
-          padding:      '7px 14px',
-          fontSize:     11,
-          fontWeight:   600,
-          fontFamily:   'Plus Jakarta Sans, sans-serif',
-          boxShadow:    '0 2px 8px rgba(0,0,0,0.25)',
-        },
-      }))
-
-      const flowEdges: Edge[] = data.edges.map((e, i) => ({
-        id:       `e${i}`,
-        source:   e.source,
-        target:   e.target,
-        label:    e.label,
-        animated: true,
-        style:    { stroke: '#8b9d83', strokeWidth: 1.5, strokeDasharray: '5 3' },
-        labelStyle: {
-          fill:       '#c4c8be',
-          fontSize:   9,
-          fontFamily: 'Plus Jakarta Sans, sans-serif',
-          fontWeight: 500,
-        },
-        labelBgStyle: {
-          fill:    'rgba(16,21,11,0.75)',
-          rx:      4,
-        },
-      }))
-
-      setNodes(flowNodes)
-      setEdges(flowEdges)
     } catch {
       setError(true)
       setNodes([])

@@ -33,7 +33,6 @@ from app.analytics import (
     carbon_hotspot_chart,
     carbon_sankey_diagram,
 )
-from app.database import get_graph_data, reset_neo4j_data, ingest_analysis_to_graph
 from app.config import SECRET_DATA_KEY
 from app.report import generate_pdf_report
 
@@ -203,10 +202,6 @@ async def analyze_file(file: UploadFile = File(...), user: str = Depends(require
         # so it matches what the Matrix LCA (h = Q·B·A⁻¹·f) will compute.
         _recalculate_total_co2(data)
 
-        try:
-            ingest_analysis_to_graph(data)
-        except Exception as neo4j_err:
-            logger.warning(f"Neo4j ingestion skipped: {neo4j_err}")
         save_audit_to_memory(data, user)
         try:
             from app.vector_store import store_full_audit
@@ -234,25 +229,104 @@ async def analyze_file(file: UploadFile = File(...), user: str = Depends(require
             os.remove(tmp_path)
 
 
-# ─── Graph ──────────────────────────────────────────────────────
+# ─── Audits ─────────────────────────────────────────────────────
 
-@app.get("/api/graph")
-async def get_graph(user: str = Depends(require_user)):
-    """Get supply chain graph nodes and edges from Neo4j."""
+@app.get("/api/audits")
+async def list_audits(user: str = Depends(require_user)):
+    """List all stored audits, newest first."""
     try:
-        nodes, edges = get_graph_data()
-        return JSONResponse(content={"nodes": nodes, "edges": edges})
+        from app.vector_store import get_full_audits
+        audits = get_full_audits(user)
+        return JSONResponse(content=list(reversed(audits)))
     except Exception as e:
-        logger.error(f"Graph error: {e}")
+        logger.error(f"List audits error: {e}")
         raise HTTPException(500, str(e))
 
 
-@app.delete("/api/graph")
-async def clear_graph(user: str = Depends(require_user)):
-    """Clear all data from Neo4j graph."""
+@app.get("/api/audits/meta")
+async def list_audit_meta(user: str = Depends(require_user)):
+    """List audit ids + dates for the current user (newest first)."""
     try:
-        reset_neo4j_data()
-        return {"status": "ok", "message": "Graph cleared"}
+        from app.vector_store import _pg_enabled, _pg_ensure, _pg_conn
+        if not _pg_enabled():
+            return JSONResponse(content=[])
+        _pg_ensure()
+        with _pg_conn() as conn:
+            rows = conn.execute(
+                "SELECT id, created_at, data FROM audits WHERE owner_id = %s "
+                "ORDER BY id DESC",
+                (user,),
+            ).fetchall()
+        meta = []
+        for r in rows:
+            d = r[2] if isinstance(r[2], dict) else json.loads(r[2])
+            meta.append({
+                "id": r[0],
+                "created_at": r[1].isoformat() if r[1] else None,
+                "name": d.get("project_info", {}).get("name", "Untitled"),
+            })
+        return JSONResponse(content=meta)
+    except Exception as e:
+        logger.error(f"List audit meta error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.delete("/api/audits")
+async def delete_all_audits(user: str = Depends(require_user)):
+    """Permanently delete all audits owned by the current user."""
+    try:
+        from app.vector_store import _pg_enabled, _pg_ensure, _pg_conn
+        if not _pg_enabled():
+            return {"status": "ok", "deleted": 0}
+        _pg_ensure()
+        with _pg_conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM audits WHERE owner_id = %s", (user,)
+            )
+            conn.commit()
+            deleted = cur.rowcount
+        logger.info(f"User {user} deleted {deleted} audit(s)")
+        return {"status": "ok", "deleted": deleted}
+    except Exception as e:
+        logger.error(f"Delete audits error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.delete("/api/audits/{audit_id}")
+async def delete_audit(audit_id: int, user: str = Depends(require_user)):
+    """Permanently delete a single audit owned by the current user."""
+    try:
+        from app.vector_store import _pg_enabled, _pg_ensure, _pg_conn
+        if not _pg_enabled():
+            return {"status": "ok", "deleted": 0}
+        _pg_ensure()
+        with _pg_conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM audits WHERE id = %s AND owner_id = %s",
+                (audit_id, user),
+            )
+            conn.commit()
+            deleted = cur.rowcount
+        if not deleted:
+            raise HTTPException(404, "Audit not found")
+        logger.info(f"User {user} deleted audit #{audit_id}")
+        return {"status": "ok", "deleted": deleted}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete audit error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.get("/api/audits/similar")
+async def similar_audits(materials: str = Query(...), user: str = Depends(require_user)):
+    material_list = [m.strip() for m in materials.split(",") if m.strip()]
+    if not material_list:
+        raise HTTPException(400, "At least one material is required")
+
+    try:
+        results = find_past_audits(material_list, owner=user)
+        return JSONResponse(content=results)
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -326,33 +400,6 @@ async def chat(payload: dict, user: str = Depends(require_user)):
         return {"answer": answer}
     except Exception as e:
         logger.error(f"Chat error: {e}")
-        raise HTTPException(500, str(e))
-
-
-# ─── Audits ─────────────────────────────────────────────────────
-
-@app.get("/api/audits")
-async def list_audits(user: str = Depends(require_user)):
-    """List all stored audits, newest first."""
-    try:
-        from app.vector_store import get_full_audits
-        audits = get_full_audits(user)
-        return JSONResponse(content=list(reversed(audits)))
-    except Exception as e:
-        logger.error(f"List audits error: {e}")
-        raise HTTPException(500, str(e))
-
-
-@app.get("/api/audits/similar")
-async def similar_audits(materials: str = Query(...), user: str = Depends(require_user)):
-    material_list = [m.strip() for m in materials.split(",") if m.strip()]
-    if not material_list:
-        raise HTTPException(400, "At least one material is required")
-
-    try:
-        results = find_past_audits(material_list, owner=user)
-        return JSONResponse(content=results)
-    except Exception as e:
         raise HTTPException(500, str(e))
 
 

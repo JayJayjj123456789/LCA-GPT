@@ -3,15 +3,13 @@ import os
 import pytest
 from unittest.mock import patch, MagicMock
 from app.analyzer import extract_text_from_pdf
-from app.database import ingest_analysis_to_graph
 
 
 class TestFullFlow:
-    """Integration tests: PDF → AI → Graph."""
+    """Integration tests: PDF → analysis JSON."""
 
-    @patch("app.database.get_driver")
-    def test_pdf_to_analysis_flow(self, mock_get_driver, sample_pdf):
-        """Full flow: extract text → validate → ingest to graph."""
+    def test_pdf_to_analysis_flow(self, sample_pdf):
+        """Full flow: extract text → validate JSON structure."""
         # Step 1: Extract text from PDF
         raw_text = extract_text_from_pdf(sample_pdf)
         assert len(raw_text) > 0, "PDF extraction failed"
@@ -31,18 +29,10 @@ class TestFullFlow:
         }
 
         # Step 3: Validate JSON structure
-        json_str = json.dumps(analysis)
-        parsed = json.loads(json_str)
+        parsed = json.loads(json.dumps(analysis))
         assert parsed["project_info"]["name"] == "Integration Test"
 
-        # Step 4: Ingest to graph
-        mock_driver = MagicMock()
-        mock_get_driver.return_value = mock_driver
-        ingest_analysis_to_graph(parsed)
-        mock_driver.close.assert_called_once()
-
-    @patch("app.database.get_driver")
-    def test_analysis_json_structure(self, mock_get_driver, sample_analysis_result):
+    def test_analysis_json_structure(self, sample_analysis_result):
         """Verify analysis JSON has all required fields."""
         required_fields = [
             "project_info", "materials", "energy", "transport",
@@ -83,24 +73,6 @@ class TestEdgeCases:
         with pytest.raises(RuntimeError):
             extract_text_from_pdf(tmp.name)
         os.remove(tmp.name)
-
-    @patch("app.database.get_driver")
-    def test_ingest_missing_optional_fields(self, mock_get_driver):
-        """Should handle data with missing optional fields."""
-        mock_driver = MagicMock()
-        mock_get_driver.return_value = mock_driver
-        data = {
-            "project_info": {"name": "Minimal", "supplier": "Test"},
-            "materials": [],
-            "energy": [],
-            "transport": [],
-            "total_estimated_co2": 0,
-            "optimization_score": 0,
-            "recommendations": [],
-            "summary": "",
-        }
-        ingest_analysis_to_graph(data)
-        mock_driver.close.assert_called_once()
 
     def test_carbon_calculation_accuracy(self):
         """Verify CO2 = amount × emission_factor."""

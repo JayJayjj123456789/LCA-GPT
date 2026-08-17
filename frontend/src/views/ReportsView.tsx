@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { NavView } from '../App'
-import type { AnalysisData } from '../api'
+import { deleteAudit, getAuditMeta, type AnalysisData, type AuditMeta } from '../api'
 
 interface Props {
   audits: AnalysisData[]
+  onAuditsChanged?: () => void
   onNavigate: (v: NavView) => void
 }
 
@@ -18,8 +19,29 @@ function getDate() {
   return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export default function ReportsView({ audits, onNavigate }: Props) {
+export default function ReportsView({ audits, onAuditsChanged, onNavigate }: Props) {
   const [sel, setSel] = useState(0)
+  const [meta, setMeta] = useState<AuditMeta[]>([])
+  const [busyId, setBusyId] = useState<number | null>(null)
+
+  useEffect(() => {
+    getAuditMeta().then(setMeta).catch(() => {})
+  }, [audits.length])
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Permanently delete this audit? This cannot be undone.')) return
+    setBusyId(id)
+    try {
+      await deleteAudit(id)
+      setMeta(m => m.filter(x => x.id !== id))
+      onAuditsChanged?.()
+      setSel(s => Math.max(0, s - 1))
+    } catch {
+      window.alert('Failed to delete audit. Please try again.')
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   if (audits.length === 0) {
     return (
@@ -108,6 +130,7 @@ export default function ReportsView({ audits, onNavigate }: Props) {
           <div className="flex-1 overflow-y-auto p-2 space-y-2">
             {audits.map((a, i) => {
               const isActive = sel === i
+              const metaRow = meta[i]  // both lists are newest-first
               return (
                 <div key={i} onClick={() => setSel(i)}
                   className="p-4 rounded-lg cursor-pointer relative"
@@ -121,11 +144,26 @@ export default function ReportsView({ audits, onNavigate }: Props) {
                       style={{ color: isActive ? '#b9ccb0' : '#e0e5d3' }}>
                       {a.project_info?.name || `Audit #${audits.length - i}`}
                     </h3>
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shrink-0"
-                      style={{ background: '#8b9d83', color: '#101f0d' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 12 }}>check_circle</span>
-                      Verified
-                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {metaRow && (
+                        <button
+                          title="Delete this audit"
+                          disabled={busyId === metaRow.id}
+                          onClick={e => { e.stopPropagation(); handleDelete(metaRow.id) }}
+                          className="p-1 rounded-md cursor-pointer transition-colors disabled:opacity-50"
+                          style={{ color: '#8e9289' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#f27a6d' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#8e9289' }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>delete</span>
+                        </button>
+                      )}
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                        style={{ background: '#8b9d83', color: '#101f0d' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 12 }}>check_circle</span>
+                        Verified
+                      </span>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <div>

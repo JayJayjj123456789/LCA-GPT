@@ -70,11 +70,6 @@ export interface AnalysisData {
   summary: string
 }
 
-export interface GraphData {
-  nodes: { id: string; label: string; size: number; color: string }[]
-  edges: { source: string; target: string; label: string }[]
-}
-
 export interface ChartData {
   data: any[]
   layout: any
@@ -97,18 +92,28 @@ export const analyzePdf = async (file: File): Promise<AnalysisData> => {
   return data
 }
 
-export const getGraph = async (): Promise<GraphData> => {
-  const { data } = await api.get<GraphData>('/graph')
-  return data
-}
-
 export const getAllAudits = async (): Promise<AnalysisData[]> => {
   const { data } = await api.get<AnalysisData[]>('/audits')
   return data
 }
 
-export const clearGraph = async (): Promise<void> => {
-  await api.delete('/graph')
+export interface AuditMeta {
+  id: number
+  created_at: string | null
+  name: string
+}
+
+export const getAuditMeta = async (): Promise<AuditMeta[]> => {
+  const { data } = await api.get<AuditMeta[]>('/audits/meta')
+  return data
+}
+
+export const deleteAudit = async (id: number): Promise<void> => {
+  await api.delete(`/audits/${id}`)
+}
+
+export const deleteAllAudits = async (): Promise<void> => {
+  await api.delete('/audits')
 }
 
 export const getHotspotChart = async (materials: any[], signal?: AbortSignal): Promise<ChartData> => {

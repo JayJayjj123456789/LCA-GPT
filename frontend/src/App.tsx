@@ -50,6 +50,13 @@ export default function App() {
     setActiveView('dashboard') // navigate to dashboard for real-time state
   }
 
+  const refreshAudits = () => {
+    if (!user) return
+    getAllAudits()
+      .then(loaded => { setAudits(loaded); setAnalysis(loaded[0] ?? null) })
+      .catch(() => {})
+  }
+
   const handleLogout = async () => {
     await logout()
     setUser(null)
@@ -81,7 +88,7 @@ export default function App() {
       case 'strategies':
         return <StrategiesView analysis={analysis} />
       case 'reports':
-        return <ReportsView audits={audits} onNavigate={setActiveView} />
+        return <ReportsView audits={audits} onAuditsChanged={refreshAudits} onNavigate={setActiveView} />
       case 'livedemo':
         return <LiveDemoView analysis={analysis} />
     }

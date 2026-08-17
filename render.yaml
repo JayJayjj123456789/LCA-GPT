@@ -19,11 +19,9 @@ services:
         value: poolside/laguna-s-2.1:free
       - key: SERPER_API_KEY
         sync: false
-      - key: NEO4J_URI
+      - key: DATABASE_URL
         sync: false
-      - key: NEO4J_USERNAME
-        sync: false
-      - key: NEO4J_PASSWORD
+      - key: SECRET_DATA_KEY
         sync: false
       - key: CORS_ORIGINS
-        sync: false
+        value: https://lca-gpt-enterprise.onrender.com
