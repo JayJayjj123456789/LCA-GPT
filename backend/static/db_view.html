@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LCA-GPT — Audit Database</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #10150b;
+    color: #e0e5d3;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  .container { max-width: 980px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 36px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px; background: #8b9d83;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .logo svg { width: 24px; height: 24px; fill: #10150b; }
+  header h1 { font-family: 'Literata', serif; font-size: 22px; font-weight: 600; color: #b9ccb0; }
+  header p { font-size: 13px; color: #8e9289; margin-top: 2px; }
+  .badge {
+    margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: #c66b3d; background: rgba(198,107,61,.12);
+    border: 1px solid rgba(198,107,61,.35); padding: 6px 12px; border-radius: 99px;
+  }
+
+  .lock-card {
+    background: #1c2116; border: 1px solid #31372a; border-radius: 16px;
+    padding: 40px; text-align: center; max-width: 440px; margin: 60px auto 0;
+  }
+  .lock-card .icon { font-size: 34px; color: #8b9d83; margin-bottom: 14px; }
+  .lock-card h2 { font-family: 'Literata', serif; font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .lock-card p { font-size: 13px; color: #8e9289; margin-bottom: 24px; }
+  input[type=password], input[type=text] {
+    width: 100%; background: #10150b; border: 1px solid #31372a; border-radius: 10px;
+    color: #e0e5d3; font-size: 15px; padding: 12px 14px; outline: none; margin-bottom: 14px;
+    font-family: inherit;
+  }
+  input:focus { border-color: #8b9d83; }
+  button {
+    font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+    border-radius: 10px; transition: opacity .15s;
+  }
+  button:hover { opacity: .88; }
+  .btn-primary {
+    width: 100%; background: #b9ccb0; color: #253421; border: none; padding: 12px;
+  }
+  .error { color: #f85149; font-size: 13px; margin-top: 10px; display: none; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .stat { background: #1c2116; border: 1px solid #31372a; border-radius: 14px; padding: 16px 18px; }
+  .stat .num { font-family: 'Literata', serif; font-size: 26px; font-weight: 700; color: #b9ccb0; }
+  .stat .label { font-size: 12px; color: #8e9289; margin-top: 4px; letter-spacing: .05em; }
+
+  .toolbar { display: flex; gap: 10px; margin-bottom: 18px; }
+  .btn-ghost {
+    background: #1c2116; color: #c4c8be; border: 1px solid #31372a; padding: 9px 16px; font-size: 13px;
+  }
+  .btn-ghost.danger { color: #c0392b; border-color: rgba(192,57,43,.4); }
+
+  .audit {
+    background: #1c2116; border: 1px solid #31372a; border-radius: 14px;
+    margin-bottom: 14px; overflow: hidden;
+  }
+  .audit-head {
+    display: flex; align-items: center; gap: 14px; padding: 16px 20px; cursor: pointer;
+  }
+  .audit-head:hover { background: rgba(49,55,42,.5); }
+  .audit-icon {
+    width: 38px; height: 38px; border-radius: 10px; background: rgba(139,157,131,.15);
+    display: flex; align-items: center; justify-content: center; color: #8b9d83; flex-shrink: 0;
+  }
+  .audit-icon svg { width: 19px; height: 19px; fill: #8b9d83; }
+  .audit-title { font-family: 'Literata', serif; font-size: 16px; font-weight: 600; }
+  .audit-sub { font-size: 12px; color: #8e9289; margin-top: 3px; }
+  .audit-meta { margin-left: auto; text-align: right; flex-shrink: 0; }
+  .audit-co2 { font-size: 15px; font-weight: 700; color: #b9ccb0; }
+  .audit-co2 small { font-size: 11px; color: #8e9289; font-weight: 400; }
+  .audit-id { font-size: 11px; color: #8e9289; margin-top: 2px; }
+  .chevron { color: #8e9289; font-size: 14px; margin-left: 6px; flex-shrink: 0; }
+
+  .audit-body { display: none; padding: 0 20px 18px; border-top: 1px solid #31372a; }
+  .audit.open .audit-body { display: block; padding-top: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .group { background: #10150b; border: 1px solid #31372a; border-radius: 10px; padding: 12px 14px; }
+  .group h4 {
+    font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: #8b9d83; margin-bottom: 8px;
+  }
+  .group .row { font-size: 12px; color: #c4c8be; padding: 3px 0; border-bottom: 1px dashed rgba(68,72,65,.4); }
+  .group .row:last-child { border-bottom: none; }
+  .group .row b { color: #b9ccb0; font-weight: 600; }
+  .summary { font-size: 13px; color: #c4c8be; line-height: 1.6; margin-top: 12px; }
+  .summary span { color: #8b9d83; font-weight: 600; }
+  pre { white-space: pre-wrap; word-break: break-word; }
+
+  .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #8e9289; }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>
+    </div>
+    <div>
+      <h1>LCA-GPT — Audit Database</h1>
+      <p>Raw audit records stored in PostgreSQL</p>
+    </div>
+    <span class="badge">Secret View</span>
+  </header>
+
+  <div id="lock" class="lock-card">
+    <div class="icon">&#128274;</div>
+    <h2>Restricted Access</h2>
+    <p>This view requires the secret key configured by the administrator.</p>
+    <input type="password" id="keyInput" placeholder="Enter secret key" autocomplete="off">
+    <button class="btn-primary" id="unlockBtn">Unlock Database</button>
+    <div class="error" id="errMsg">Wrong key. Access denied.</div>
+  </div>
+
+  <div id="view" class="hide">
+    <div class="stats">
+      <div class="stat"><div class="num" id="sTotal">0</div><div class="label">AUDITS</div></div>
+      <div class="stat"><div class="num" id="sCo2">0</div><div class="label">TOTAL CO₂ (kg)</div></div>
+      <div class="stat"><div class="num" id="sMat">0</div><div class="label">MATERIALS</div></div>
+      <div class="stat"><div class="num" id="sProj">0</div><div class="label">PROJECTS</div></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn-ghost" id="refreshBtn">&#10227; Refresh</button>
+      <button class="btn-ghost" id="copyBtn">Copy JSON</button>
+      <button class="btn-ghost" id="dlBtn">&#11015; Download JSON</button>
+      <button class="btn-ghost danger" id="lockBtn">Lock</button>
+    </div>
+
+    <div id="list"></div>
+    <div class="footer">LCA-GPT Enterprise · audit database · secret view</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  let KEY = '';
+  const $ = id => document.getElementById(id);
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('key')) {
+    KEY = params.get('key');
+    unlock();
+  }
+
+  $('keyInput').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+  $('unlockBtn').addEventListener('click', unlock);
+  $('refreshBtn').addEventListener('click', load);
+  $('lockBtn').addEventListener('click', () => {
+    KEY = ''; $('view').classList.add('hide'); $('lock').classList.remove('hide');
+    $('keyInput').value = ''; history.replaceState(null, '', '/db-view');
+  });
+  $('copyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(allData, null, 2));
+      flash($('copyBtn'), 'Copied!');
+    } catch (e) { alert('Copy failed — use Download JSON instead.'); }
+  });
+  $('dlBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lca_audit_database.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  let allData = { count: 0, audits: [] };
+
+  function flash(btn, txt) {
+    const old = btn.textContent;
+    btn.textContent = txt;
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  }
+
+  async function unlock() {
+    const k = $('keyInput').value.trim();
+    $('errMsg').style.display = 'none';
+    const ok = await tryLoad(k);
+    if (ok) {
+      KEY = k;
+      $('lock').classList.add('hide');
+      $('view').classList.remove('hide');
+      history.replaceState(null, '', '/db-view?key=' + encodeURIComponent(k));
+    } else {
+      $('errMsg').style.display = 'block';
+    }
+  }
+
+  async function tryLoad(key) {
+    try {
+      const res = await fetch('/api/secret/audits?key=' + encodeURIComponent(key));
+      if (!res.ok) return false;
+      allData = await res.json();
+      render();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function load() { tryLoad(KEY); }
+
+  function fmtDate(iso) {
+    try { return new Date(iso).toLocaleString(); } catch (e) { return iso || ''; }
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function render() {
+    const audits = allData.audits || [];
+    let co2 = 0, mat = 0;
+    audits.forEach(a => { co2 += a.data.total_estimated_co2 || 0; mat += (a.data.materials || []).length; });
+    $('sTotal').textContent = audits.length;
+    $('sCo2').textContent = Math.round(co2).toLocaleString();
+    $('sMat').textContent = mat;
+    $('sProj').textContent = new Set(audits.map(a => a.data.project_info && a.data.project_info.name)).size;
+
+    $('list').innerHTML = audits.map((a, i) => {
+      const d = a.data || {};
+      const info = d.project_info || {};
+      const materials = (d.materials || []).map(m =>
+        '<div class="row"><b>' + esc(m.name) + '</b> — ' + esc(m.amount) + ' ' + esc(m.unit) +
+        ' · EF ' + esc(m.emission_factor) + ' kgCO₂e</div>').join('');
+      const energy = (d.energy || []).map(e =>
+        '<div class="row"><b>' + esc(e.type) + '</b> — ' + esc(e.usage) + ' ' + esc(e.unit) +
+        ' · EF ' + esc(e.emission_factor) + '</div>').join('');
+      const transport = (d.transport || []).map(t =>
+        '<div class="row"><b>' + esc(t.method) + '</b> — ' + esc(t.distance) + ' ' + esc(t.unit) +
+        ' · EF ' + esc(t.emission_factor) + '</div>').join('');
+      const recs = (d.recommendations || []).map(r => '<div class="row">' + esc(r) + '</div>').join('');
+      return (
+        '<div class="audit" id="a' + i + '">' +
+        '<div class="audit-head" onclick="toggle(' + i + ')">' +
+          '<div class="audit-icon"><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-6-4-6 4V2zm2 5v2h8V7H8zm0 4v2h8v-2H8z"/></svg></div>' +
+          '<div><div class="audit-title">' + esc(info.name || 'Untitled') + '</div>' +
+          '<div class="audit-sub">' + esc(info.supplier || '—') + ' · ' + esc(fmtDate(a.created_at)) + ' · id ' + a.id + '</div></div>' +
+          '<div class="audit-meta"><div class="audit-co2">' + (d.total_estimated_co2 != null ? Math.round(d.total_estimated_co2).toLocaleString() : '?') +
+            ' <small>kg CO₂e</small></div>' +
+          '<div class="audit-id">score ' + (d.optimization_score != null ? d.optimization_score + '/100' : '—') + '</div></div>' +
+          '<span class="chevron">&#9662;</span>' +
+        '</div>' +
+        '<div class="audit-body"><div class="grid">' +
+          '<div class="group"><h4>Materials</h4>' + (materials || '<div class="row">none</div>') + '</div>' +
+          '<div class="group"><h4>Energy</h4>' + (energy || '<div class="row">none</div>') + '</div>' +
+          '<div class="group"><h4>Transport</h4>' + (transport || '<div class="row">none</div>') + '</div>' +
+          (recs ? '<div class="group"><h4>Recommendations</h4>' + recs + '</div>' : '') +
+        '</div>' +
+        (d.summary ? '<div class="summary"><span>Summary:</span> ' + esc(d.summary) + '</div>' : '') +
+        '</div></div>'
+      );
+    }).join('') || '<p style="color:#8e9289;font-size:13px;text-align:center;padding:40px 0">No audits in the database yet.</p>';
+  }
+
+  window.toggle = i => {
+    const el = document.getElementById('a' + i);
+    if (el) el.classList.toggle('open');
+  };
+})();
+</script>
+</body>
+</html>

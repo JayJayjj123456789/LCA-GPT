@@ -23,6 +23,7 @@ from app.analytics import (
     carbon_sankey_diagram,
 )
 from app.database import get_graph_data, reset_neo4j_data, ingest_analysis_to_graph
+from app.config import SECRET_DATA_KEY
 from app.report import generate_pdf_report
 
 logging.basicConfig(level=logging.INFO)
@@ -625,6 +626,50 @@ def _enrich_notes(data: dict) -> None:
 # ─── Static frontend (production) ───────────────────────────────────
 
 _DIST_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+
+
+# ─── Secret database viewer ─────────────────────────────────────────
+# Enabled only when SECRET_DATA_KEY is configured on the server.
+
+def _secret_key_ok(key: str) -> bool:
+    from secrets import compare_digest
+    return bool(SECRET_DATA_KEY) and compare_digest(key or "", SECRET_DATA_KEY)
+
+
+@app.get("/api/secret/audits")
+async def secret_audits(key: str = Query("")):
+    """Return all stored audits (with id + created_at). Requires secret key."""
+    if not _secret_key_ok(key):
+        raise HTTPException(404, "Not found")
+    try:
+        from app.vector_store import _pg_enabled, _pg_ensure, _pg_conn
+        import json as _json
+        if not _pg_enabled():
+            return JSONResponse(content={"count": 0, "audits": []})
+        _pg_ensure()
+        with _pg_conn() as conn:
+            rows = conn.execute(
+                "SELECT id, created_at, data FROM audits ORDER BY id DESC"
+            ).fetchall()
+        audits = [{
+            "id": r[0],
+            "created_at": r[1].isoformat() if r[1] else None,
+            "data": r[2] if isinstance(r[2], dict) else _json.loads(r[2]),
+        } for r in rows]
+        return JSONResponse(content={"count": len(audits), "audits": audits})
+    except Exception as e:
+        logger.error(f"Secret audits error: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.get("/db-view", include_in_schema=False)
+async def db_view_page():
+    """Secret database viewer page (looks like the frontend)."""
+    page = os.path.join(os.path.dirname(__file__), "static", "db_view.html")
+    if not os.path.isfile(page):
+        raise HTTPException(404, "Not found")
+    return FileResponse(page)
+
 
 if os.path.isdir(_DIST_DIR):
     app.mount(
