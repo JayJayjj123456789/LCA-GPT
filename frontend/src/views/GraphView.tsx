@@ -1,11 +1,25 @@
+import { useState } from 'react'
 import type { AnalysisData } from '../api'
 import type { NavView } from '../App'
 import GraphViz from '../components/GraphViz'
 import Charts from '../components/Charts'
 
-interface Props { analysis: AnalysisData | null; graphKey: number; onNavigate: (v: NavView) => void }
+interface Props {
+  analysis: AnalysisData | null
+  audits: AnalysisData[]
+  graphKey: number
+  onNavigate: (v: NavView) => void
+}
 
-export default function GraphView({ analysis, graphKey, onNavigate }: Props) {
+export default function GraphView({ analysis, audits, graphKey, onNavigate }: Props) {
+  // Default to the most recent audit (index 0) when multiple exist
+  const [selectedIdx, setSelectedIdx] = useState(0)
+
+  // Derive the active analysis: prefer from audits array (supports multi-doc),
+  // fall back to the single `analysis` prop for backwards compatibility
+  const activeList = audits.length > 0 ? audits : (analysis ? [analysis] : [])
+  const activeAnalysis = activeList[selectedIdx] ?? null
+
   return (
     <div className="px-14 py-12 w-full flex flex-col gap-10">
 
@@ -32,18 +46,47 @@ export default function GraphView({ analysis, graphKey, onNavigate }: Props) {
         </div>
       </div>
 
+      {/* Document selector — only shown when there are multiple uploads */}
+      {activeList.length > 1 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined" style={{ fontSize:16, color:'#8e9289' }}>folder_open</span>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color:'#8e9289' }}>
+              Uploaded Documents — {activeList.length} total
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {activeList.map((a, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedIdx(i)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer border"
+                style={
+                  i === selectedIdx
+                    ? { background:'#8b9d83', color:'#10150b', borderColor:'#8b9d83' }
+                    : { background:'#1c2116', color:'#c4c8be', borderColor:'#31372a' }
+                }
+              >
+                <span className="material-symbols-outlined" style={{ fontSize:14 }}>description</span>
+                {a.project_info?.name || `Document ${i + 1}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Full-width graph */}
       <div className="rounded-xl overflow-hidden relative"
         style={{ background:'#1c2116', border:'1px solid #31372a', height:560 }}>
         <div className="noise-bg" />
         <div className="relative z-10 h-full">
-          <GraphViz refreshKey={graphKey} analysis={analysis} />
+          <GraphViz refreshKey={graphKey + selectedIdx} analysis={activeAnalysis} />
         </div>
       </div>
 
       {/* Charts below if data exists */}
-      {analysis ? (
-        <Charts data={analysis} />
+      {activeAnalysis ? (
+        <Charts data={activeAnalysis} />
       ) : (
         <div className="text-center py-12 rounded-xl"
           style={{ background:'#1c2116', border:'1px solid #31372a' }}>

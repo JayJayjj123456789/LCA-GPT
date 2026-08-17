@@ -1,213 +1,554 @@
 {
   "project_name": "LCA-GPT Enterprise",
   "stack": [
-    { "name": "React 19", "category": "frontend", "icon": "react" },
-    { "name": "Vite 6", "category": "frontend", "icon": "react" },
-    { "name": "TypeScript", "category": "frontend", "icon": "react" },
-    { "name": "Tailwind CSS 4", "category": "frontend", "icon": "react" },
-    { "name": "FastAPI", "category": "backend", "icon": "python" },
-    { "name": "Neo4j", "category": "database", "icon": "postgres" },
-    { "name": "Plotly.js", "category": "frontend", "icon": "chart" },
-    { "name": "ReactFlow", "category": "frontend", "icon": "chart" },
-    { "name": "ReportLab", "category": "backend", "icon": "file" },
-    { "name": "PyMuPDF", "category": "backend", "icon": "file" }
+    {
+      "name": "React 19",
+      "category": "frontend"
+    },
+    {
+      "name": "Vite 6",
+      "category": "frontend"
+    },
+    {
+      "name": "TypeScript",
+      "category": "frontend"
+    },
+    {
+      "name": "Tailwind CSS 4",
+      "category": "frontend"
+    },
+    {
+      "name": "FastAPI",
+      "category": "backend"
+    },
+    {
+      "name": "Neo4j",
+      "category": "database"
+    },
+    {
+      "name": "Plotly.js",
+      "category": "frontend"
+    },
+    {
+      "name": "ReactFlow",
+      "category": "frontend"
+    },
+    {
+      "name": "ReportLab",
+      "category": "backend"
+    },
+    {
+      "name": "PyMuPDF",
+      "category": "backend"
+    },
+    {
+      "name": "NumPy / SciPy",
+      "category": "backend"
+    },
+    {
+      "name": "OpenRouter AI",
+      "category": "ai"
+    },
+    {
+      "name": "Owl-Alpha LLM",
+      "category": "ai"
+    },
+    {
+      "name": "Serper.dev",
+      "category": "external"
+    },
+    {
+      "name": "Pinecone Vector DB",
+      "category": "database"
+    },
+    {
+      "name": "Sentence-BERT",
+      "category": "ai"
+    }
   ],
   "nodes": [
     {
+      "id": "math-engine",
+      "name": "LCA Math Engine (6 Models)",
+      "plain_english": "Six ISO-grade algorithms: Matrix LCA (Heijings & Suh: h = Q·B·A⁻¹·f), Leontief EEIO (Nobel 1973: x = (I−A)⁻¹·y), TOPSIS MCDA (C = d⁻/(d⁺+d⁻)), Monte Carlo (50k runs, μₕ ± 1.96σₕ), Sensitivity (∂h/∂Aᵢⱼ), Non-Linear Dynamic LCA.",
+      "layer": "backend",
+      "rank": 2,
+      "external": false,
+      "files": [
+        "app/math/matrix_lca.py",
+        "app/math/leontief.py",
+        "app/math/topsis.py",
+        "app/math/uncertainty.py",
+        "app/math/sensitivity.py",
+        "app/math/nonlinear_lca.py"
+      ]
+    },
+    {
+      "id": "ai-extraction",
+      "name": "AI Document Extraction",
+      "plain_english": "Uses Owl-Alpha LLM (via OpenRouter) to extract structured carbon data from unstructured PDF/Excel/CSV procurement documents. Outputs JSON with materials, energy, transport, and recommendations.",
+      "layer": "backend",
+      "rank": 2,
+      "external": false,
+      "files": [
+        "app/analyzer.py"
+      ]
+    },
+    {
+      "id": "graph-rag-chat",
+      "name": "Graph RAG Chat System",
+      "plain_english": "Retrieval-Augmented Generation over Neo4j: converts supply chain graph into LLM context, sends to OpenRouter/Owl-Alpha, streams answers. Supports bilingual Thai/English with zero hallucination.",
+      "layer": "backend",
+      "rank": 2,
+      "external": false,
+      "files": [
+        "backend/graph_rag.py"
+      ]
+    },
+    {
+      "id": "ef-search",
+      "name": "Emission Factor Search",
+      "plain_english": "Real-time Google Search via Serper.dev for emission factors. Multi-query strategy per category (materials, transport, energy). Trusted URL allowlist (25+ domains: IPCC, EPA, TGO) + fallback DB (50+ materials) + in-memory cache.",
+      "layer": "backend",
+      "rank": 2,
+      "external": false,
+      "files": [
+        "app/search.py"
+      ]
+    },
+    {
       "id": "app-shell",
-      "name": "App Shell & Router",
-      "plain_english": "The root React component that manages navigation between views and holds shared state (current analysis, audit history).",
+      "name": "App Shell & Sidebar",
+      "plain_english": "Root layout with a fixed sidebar routing between Dashboard, Audit, Graph, Strategies, Reports, and Live Demo views. Owns global state (active analysis, audit history).",
       "layer": "frontend",
       "rank": 0,
-      "icon": "dashboard",
-      "files": ["frontend/src/App.tsx", "frontend/src/main.tsx", "frontend/src/components/Sidebar.tsx"],
-      "external": false
+      "external": false,
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/main.tsx",
+        "frontend/src/components/Sidebar.tsx"
+      ]
     },
     {
-      "id": "dashboard-view",
-      "name": "Dashboard View",
-      "plain_english": "Overview page showing KPI metrics (total CO2, items tracked, optimization score), Charts (hotspot bar, pie, Sankey), latest audit summary, and recommendations.",
+      "id": "api-client",
+      "name": "API Client (api.ts)",
+      "plain_english": "Centralized Axios HTTP client wrapping all 19 FastAPI endpoints with typed request/response helpers.",
       "layer": "frontend",
       "rank": 0,
-      "icon": "dashboard",
-      "files": ["frontend/src/views/DashboardView.tsx", "frontend/src/components/Dashboard.tsx", "frontend/src/components/Charts.tsx"],
-      "external": false
+      "external": false,
+      "files": [
+        "frontend/src/api.ts"
+      ]
     },
     {
-      "id": "audit-view",
-      "name": "Audit View",
-      "plain_english": "Upload page where users drop PDF/Excel files for analysis. Shows a supply chain graph (ReactFlow) and a material/energy/transport data table after analysis completes.",
+      "id": "page-dashboard",
+      "name": "Dashboard Page",
+      "plain_english": "KPI cards (Supplier, Items, Carbon, Score), Plotly charts (hotspot bar, pie, Sankey flow), latest audit summary, top 3 recommendations.",
       "layer": "frontend",
       "rank": 0,
-      "icon": "upload",
-      "files": ["frontend/src/views/AuditView.tsx", "frontend/src/components/PdfUploader.tsx", "frontend/src/components/GraphViz.tsx", "frontend/src/components/DataTable.tsx"],
-      "external": false
+      "external": false,
+      "files": [
+        "frontend/src/views/DashboardView.tsx",
+        "frontend/src/components/Dashboard.tsx",
+        "frontend/src/components/Charts.tsx"
+      ]
     },
     {
-      "id": "graph-view",
-      "name": "Graph View",
-      "plain_english": "Full-screen interactive supply chain graph visualization with zoom controls, plus charts below when data exists.",
+      "id": "page-audit",
+      "name": "Audit Page",
+      "plain_english": "Upload PDF/Excel/CSV for AI analysis. Live ReactFlow supply chain graph on right. Full material/energy/transport data tables.",
       "layer": "frontend",
       "rank": 0,
-      "icon": "chart",
-      "files": ["frontend/src/views/GraphView.tsx", "frontend/src/components/GraphViz.tsx", "frontend/src/components/Charts.tsx"],
-      "external": false
+      "external": false,
+      "files": [
+        "frontend/src/views/AuditView.tsx",
+        "frontend/src/components/PdfUploader.tsx",
+        "frontend/src/components/DataTable.tsx"
+      ]
     },
     {
-      "id": "strategies-view",
-      "name": "Strategies View",
-      "plain_english": "AI chat consultant page. Left panel: real-time conversation with Graph RAG backend. Right panel: AI-generated recommendations cards with scope labels.",
+      "id": "page-graph",
+      "name": "Graph Page (Neo4j)",
+      "plain_english": "Full-screen ReactFlow supply chain graph: 5 node types (Project, Material, Energy, Transport, CarbonImpact), 4 relationships. Interactive: pan/zoom/click for details.",
       "layer": "frontend",
       "rank": 0,
-      "icon": "ai",
-      "files": ["frontend/src/views/StrategiesView.tsx", "frontend/src/components/Chat.tsx", "frontend/src/components/Recommendations.tsx"],
-      "external": false
+      "external": false,
+      "files": [
+        "frontend/src/views/GraphView.tsx",
+        "frontend/src/components/GraphViz.tsx"
+      ]
     },
     {
-      "id": "reports-view",
-      "name": "Reports View",
-      "plain_english": "Historical audit browser. Left: scrollable list of past audits. Right: detailed breakdown with emissions table, scope bars, summary, and export buttons (PDF/CSV).",
+      "id": "page-strategies",
+      "name": "Strategies & AI Chat",
+      "plain_english": "AI Strategy Consultant chat on left; Scope 1/2/3 recommendation cards on right. Users ask about hotspots, reduction strategies, material swaps in Thai/English.",
       "layer": "frontend",
       "rank": 0,
-      "icon": "file",
-      "files": ["frontend/src/views/ReportsView.tsx", "frontend/src/components/PastAudits.tsx", "frontend/src/components/ConfirmModal.tsx"],
-      "external": false
+      "external": false,
+      "files": [
+        "frontend/src/views/StrategiesView.tsx",
+        "frontend/src/components/Chat.tsx",
+        "frontend/src/components/Recommendations.tsx"
+      ]
+    },
+    {
+      "id": "page-reports",
+      "name": "Reports & History",
+      "plain_english": "Selectable past-audit list with emissions breakdown, key metrics, AI summary, recommendations. Export: PDF (ISO 14067) and CSV. Similar Past Audits with match scores.",
+      "layer": "frontend",
+      "rank": 0,
+      "external": false,
+      "files": [
+        "frontend/src/views/ReportsView.tsx",
+        "frontend/src/components/PastAudits.tsx",
+        "frontend/src/components/ConfirmModal.tsx"
+      ]
+    },
+    {
+      "id": "page-livedemo",
+      "name": "Live Demo View",
+      "plain_english": "Competition demo walkthrough: speed comparison (21 days → 15s), real-time KPI cards, 4 tabbed analysis panels (Matrix LCA, Monte Carlo, Sensitivity, Non-Linear), matrix display (s, g, h vectors).",
+      "layer": "frontend",
+      "rank": 0,
+      "external": false,
+      "files": [
+        "frontend/src/views/LiveDemoView.tsx"
+      ]
     },
     {
       "id": "fastapi-server",
       "name": "FastAPI Server",
-      "plain_english": "The main backend server that handles all API requests from the frontend.",
+      "plain_english": "19-endpoint REST API: /analyze (upload), /graph (CRUD), /charts/* (6 types: hotspot, pie, sankey, tornado, monte-carlo, waterfall), /math/* (6 algorithms), /reports/pdf, /chat, /audits/similar.",
       "layer": "api",
       "rank": 1,
-      "icon": "python",
-      "files": ["backend/main.py"],
-      "external": false
+      "external": false,
+      "files": [
+        "backend/main.py"
+      ]
     },
     {
       "id": "pdf-analyzer",
-      "name": "PDF Analysis Engine",
-      "plain_english": "Extracts text from PDFs and Excel files, then uses OpenRouter AI to identify materials, energy use, and transport emissions.",
+      "name": "PDF & Excel Analyzer",
+      "plain_english": "Extracts text via PyMuPDF/Pandas, auto-detects headers, then calls Owl-Alpha LLM to identify materials, energy, transport with CO2e values, source URLs, and recommendations.",
       "layer": "backend",
       "rank": 2,
-      "icon": "file",
-      "files": ["app/analyzer.py"],
-      "external": false
+      "external": false,
+      "files": [
+        "app/analyzer.py"
+      ]
     },
     {
       "id": "analytics",
-      "name": "Analytics & Charts",
-      "plain_english": "Generates interactive Plotly charts — carbon hotspot bars, emission breakdown pie, and supply chain Sankey diagram.",
+      "name": "Analytics & Charts Engine",
+      "plain_english": "11 Plotly chart types: hotspot bar, emission pie, Sankey flow, Monte Carlo histogram, tornado sensitivity, TOPSIS radar, convergence plot, waterfall, non-linear comparison, treemap, and bar charts.",
       "layer": "backend",
       "rank": 2,
-      "icon": "chart",
-      "files": ["app/analytics.py"],
-      "external": false
+      "external": false,
+      "files": [
+        "app/analytics.py",
+        "app/analytics_advanced.py"
+      ]
     },
     {
       "id": "report-generator",
       "name": "PDF Report Generator",
-      "plain_english": "Creates professional ISO 14067 carbon footprint reports as downloadable PDFs.",
+      "plain_english": "Creates professional ISO 14067 carbon footprint PDFs via ReportLab with embedded Plotly charts, data tables, and AI-generated recommendations.",
       "layer": "backend",
       "rank": 2,
-      "icon": "file",
-      "files": ["app/report.py"],
-      "external": false
-    },
-    {
-      "id": "search-intelligence",
-      "name": "Search & Emission Factors",
-      "plain_english": "Looks up verified emission factors from a trusted database and searches Serper.dev for unknown materials.",
-      "layer": "backend",
-      "rank": 2,
-      "icon": "globe",
-      "files": ["app/search.py"],
-      "external": false
-    },
-    {
-      "id": "chat-system",
-      "name": "Graph RAG Chat",
-      "plain_english": "An AI consultant that answers questions about the supply chain by reading the Neo4j graph database.",
-      "layer": "backend",
-      "rank": 2,
-      "icon": "ai",
-      "files": ["backend/graph_rag.py"],
-      "external": false
-    },
-    {
-      "id": "vector-store",
-      "name": "Audit Memory Store",
-      "plain_english": "Remembers past audits in-memory (simple material overlap matching) so the system can suggest similar ones.",
-      "layer": "backend",
-      "rank": 2,
-      "icon": "box",
-      "files": ["app/vector_store.py"],
-      "external": false
+      "external": false,
+      "files": [
+        "app/report.py"
+      ]
     },
     {
       "id": "database-layer",
       "name": "Neo4j Database Layer",
-      "plain_english": "Stores the supply chain as a graph of projects, materials, energy, and transport nodes connected by relationships.",
+      "plain_english": "Abstracts all Cypher queries. Writes supply chain graph: 5 node types (Project, Material, Energy, Transport, CarbonImpact), 4 relationships. Reads for ReactFlow and Graph RAG.",
       "layer": "database",
       "rank": 3,
-      "icon": "box",
-      "files": ["app/database.py"],
-      "external": false
+      "external": false,
+      "files": [
+        "app/database.py"
+      ]
     },
     {
-      "id": "openrouter",
+      "id": "vector-store",
+      "name": "Audit Vector Memory",
+      "plain_english": "In-memory + Pinecone vector store. Matches new audits to similar historical ones by material overlap using Sentence-BERT 384-dim embeddings and cosine similarity.",
+      "layer": "backend",
+      "rank": 2,
+      "external": false,
+      "files": [
+        "app/vector_store.py"
+      ]
+    },
+    {
+      "id": "config",
+      "name": "Configuration (.env)",
+      "plain_english": "Loads OPENROUTER_API_KEY, NEO4J_URI, SERPER_API_KEY, PINECONE_API_KEY from .env via python-dotenv.",
+      "layer": "backend",
+      "rank": 2,
+      "external": false,
+      "files": [
+        "app/config.py"
+      ]
+    },
+    {
+      "id": "mathematical-models",
+      "name": "6 Mathematical Models",
+      "plain_english": "Six models: (1) Matrix LCA: h = Q·B·A⁻¹·f, (2) Leontief: x = (I−A)⁻¹·y with power series, (3) TOPSIS: 7-step MCDA ranking, (4) Monte Carlo: 50k-run uncertainty with 95% CI, (5) Sensitivity: ∂/∂Aᵢⱼ with SR ratios + tornado, (6) Non-Linear: A(s)·s = f with scale-dependent coefficients.",
+      "layer": "backend",
+      "rank": 2,
+      "external": false,
+      "files": [
+        "app/math/matrix_lca.py",
+        "app/math/leontief.py",
+        "app/math/topsis.py",
+        "app/math/uncertainty.py",
+        "app/math/sensitivity.py",
+        "app/math/nonlinear_lca.py"
+      ]
+    },
+    {
+      "id": "openrouter-api",
       "name": "OpenRouter AI",
-      "plain_english": "Runs Owl-Alpha model to analyze supply chain documents and answer chat questions.",
+      "plain_english": "LLM API gateway serving Owl-Alpha model for document extraction and Graph RAG chat. Temperature 0.1, top_p 0.9, frequency_penalty 0.3.",
       "layer": "external",
       "rank": 1,
-      "icon": "ai",
-      "files": [],
-      "external": true
+      "external": true,
+      "files": []
     },
     {
       "id": "serper",
       "name": "Serper.dev",
-      "plain_english": "Google Search API that finds real emission factor data and source URLs for unknown materials.",
+      "plain_english": "Google Search API for real-time emission factor lookups. Multi-query per category, 25+ trusted domains, in-memory caching.",
       "layer": "external",
       "rank": 1,
-      "icon": "globe",
-      "files": [],
-      "external": true
+      "external": true,
+      "files": []
     },
     {
       "id": "neo4j-cloud",
-      "name": "Neo4j",
-      "plain_english": "Cloud-hosted graph database that stores the supply chain data.",
+      "name": "Neo4j AuraDB",
+      "plain_english": "Managed graph DB storing full supply chain as 5 node types + 4 relationships. Queried via Bolt protocol.",
       "layer": "external",
       "rank": 1,
-      "icon": "box",
-      "files": [],
-      "external": true
+      "external": true,
+      "files": []
+    },
+    {
+      "id": "pinecone",
+      "name": "Pinecone Vector DB",
+      "plain_english": "Vector database for semantic audit search. 384-dim embeddings from Sentence-BERT, cosine similarity matching.",
+      "layer": "external",
+      "rank": 1,
+      "external": true,
+      "files": []
     }
   ],
   "edges": [
-    { "from": "dashboard-view", "to": "fastapi-server", "label": "fetches metrics and summary", "kind": "api_call" },
-    { "from": "audit-view", "to": "fastapi-server", "label": "uploads PDF/Excel, triggers analysis", "kind": "api_call" },
-    { "from": "graph-view", "to": "fastapi-server", "label": "fetches graph nodes and edges", "kind": "api_call" },
-    { "from": "strategies-view", "to": "fastapi-server", "label": "sends chat questions to AI", "kind": "api_call" },
-    { "from": "reports-view", "to": "fastapi-server", "label": "requests PDF export", "kind": "api_call" },
-    { "from": "fastapi-server", "to": "pdf-analyzer", "label": "sends extracted text for AI analysis", "kind": "api_call" },
-    { "from": "pdf-analyzer", "to": "openrouter", "label": "asks AI to identify materials and emissions", "kind": "external_call" },
-    { "from": "pdf-analyzer", "to": "search-intelligence", "label": "looks up verified emission factors", "kind": "api_call" },
-    { "from": "search-intelligence", "to": "serper", "label": "searches the web for unknown material EFs", "kind": "external_call" },
-    { "from": "pdf-analyzer", "to": "database-layer", "label": "saves analysis results to the graph", "kind": "db_write" },
-    { "from": "pdf-analyzer", "to": "vector-store", "label": "stores audit in memory for future reference", "kind": "db_write" },
-    { "from": "database-layer", "to": "neo4j-cloud", "label": "reads and writes graph data", "kind": "external_call" },
-    { "from": "fastapi-server", "to": "analytics", "label": "requests chart data (hotspot, pie, sankey)", "kind": "api_call" },
-    { "from": "fastapi-server", "to": "report-generator", "label": "requests PDF report generation", "kind": "api_call" },
-    { "from": "fastapi-server", "to": "database-layer", "label": "fetches graph nodes and edges for ReactFlow", "kind": "db_read" },
-    { "from": "fastapi-server", "to": "chat-system", "label": "sends user questions about the supply chain", "kind": "api_call" },
-    { "from": "chat-system", "to": "database-layer", "label": "reads graph context to answer questions", "kind": "db_read" },
-    { "from": "chat-system", "to": "openrouter", "label": "asks AI to generate answers from graph context", "kind": "external_call" },
-    { "from": "fastapi-server", "to": "vector-store", "label": "searches similar past audits", "kind": "db_read" }
+    {
+      "from": "app-shell",
+      "to": "page-dashboard",
+      "label": "routes to",
+      "kind": "import"
+    },
+    {
+      "from": "app-shell",
+      "to": "page-audit",
+      "label": "routes to",
+      "kind": "import"
+    },
+    {
+      "from": "app-shell",
+      "to": "page-graph",
+      "label": "routes to",
+      "kind": "import"
+    },
+    {
+      "from": "app-shell",
+      "to": "page-strategies",
+      "label": "routes to",
+      "kind": "import"
+    },
+    {
+      "from": "app-shell",
+      "to": "page-reports",
+      "label": "routes to",
+      "kind": "import"
+    },
+    {
+      "from": "app-shell",
+      "to": "page-livedemo",
+      "label": "routes to",
+      "kind": "import"
+    },
+    {
+      "from": "page-dashboard",
+      "to": "api-client",
+      "label": "chart data, summary",
+      "kind": "api_call"
+    },
+    {
+      "from": "page-audit",
+      "to": "api-client",
+      "label": "upload, poll graph",
+      "kind": "api_call"
+    },
+    {
+      "from": "page-graph",
+      "to": "api-client",
+      "label": "fetch nodes & edges",
+      "kind": "api_call"
+    },
+    {
+      "from": "page-strategies",
+      "to": "api-client",
+      "label": "chat, math results",
+      "kind": "api_call"
+    },
+    {
+      "from": "page-reports",
+      "to": "api-client",
+      "label": "list, download PDF",
+      "kind": "api_call"
+    },
+    {
+      "from": "page-livedemo",
+      "to": "api-client",
+      "label": "demo API calls",
+      "kind": "api_call"
+    },
+    {
+      "from": "api-client",
+      "to": "fastapi-server",
+      "label": "19 endpoints",
+      "kind": "api_call"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "pdf-analyzer",
+      "label": "POST /analyze",
+      "kind": "api_call"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "ai-extraction",
+      "label": "AI document parse",
+      "kind": "api_call"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "analytics",
+      "label": "POST /charts/*",
+      "kind": "api_call"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "math-engine",
+      "label": "POST /math/*",
+      "kind": "api_call"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "mathematical-models",
+      "label": "6 math models",
+      "kind": "api_call"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "report-generator",
+      "label": "POST /reports/pdf",
+      "kind": "api_call"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "database-layer",
+      "label": "GET|DELETE /graph",
+      "kind": "db_read"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "graph-rag-chat",
+      "label": "POST /chat",
+      "kind": "api_call"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "vector-store",
+      "label": "GET /audits/similar",
+      "kind": "db_read"
+    },
+    {
+      "from": "fastapi-server",
+      "to": "ef-search",
+      "label": "EF lookup",
+      "kind": "api_call"
+    },
+    {
+      "from": "pdf-analyzer",
+      "to": "openrouter-api",
+      "label": "extract materials",
+      "kind": "external_call"
+    },
+    {
+      "from": "ai-extraction",
+      "to": "openrouter-api",
+      "label": "LLM extraction",
+      "kind": "external_call"
+    },
+    {
+      "from": "pdf-analyzer",
+      "to": "ef-search",
+      "label": "resolve EFs",
+      "kind": "api_call"
+    },
+    {
+      "from": "pdf-analyzer",
+      "to": "database-layer",
+      "label": "write graph",
+      "kind": "db_write"
+    },
+    {
+      "from": "pdf-analyzer",
+      "to": "vector-store",
+      "label": "store embedding",
+      "kind": "db_write"
+    },
+    {
+      "from": "ef-search",
+      "to": "serper",
+      "label": "Google fallback",
+      "kind": "external_call"
+    },
+    {
+      "from": "graph-rag-chat",
+      "to": "database-layer",
+      "label": "read Cypher",
+      "kind": "db_read"
+    },
+    {
+      "from": "graph-rag-chat",
+      "to": "openrouter-api",
+      "label": "RAG answer",
+      "kind": "external_call"
+    },
+    {
+      "from": "database-layer",
+      "to": "neo4j-cloud",
+      "label": "Bolt R/W",
+      "kind": "external_call"
+    },
+    {
+      "from": "vector-store",
+      "to": "pinecone",
+      "label": "vector search",
+      "kind": "external_call"
+    }
   ],
   "summary": {
-    "feature_count": 16,
-    "connection_count": 19,
-    "headline": "AI-powered supply chain carbon audit system — upload PDF invoices or BOMs, and it automatically identifies materials, calculates CO2e emissions, visualizes the supply chain as an interactive graph, and generates ISO 14067 reports."
+    "feature_count": 24,
+    "connection_count": 33,
+    "headline": "AI-powered LCA carbon audit system with 6 mathematical models (Matrix LCA: h=Q·B·A⁻¹·f, Leontief, TOPSIS, Monte Carlo, Sensitivity, Non-Linear), Graph RAG chat via Neo4j + OpenRouter AI, 11 chart types, ISO 14067 reporting."
   }
 }

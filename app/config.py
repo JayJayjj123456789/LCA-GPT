@@ -25,7 +25,3 @@ else:
     ACTIVE_API_KEY  = OPENROUTER_API_KEY
     ACTIVE_MODEL    = OPENROUTER_MODEL
     ACTIVE_BASE_URL = _OPENROUTER_BASE_URL
-
-# ─── Gemini Embeddings ────────────────────────────────────────────────────────
-GEMINI_API_KEY         = os.getenv("GEMINI_API_KEY")
-GEMINI_EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-2")

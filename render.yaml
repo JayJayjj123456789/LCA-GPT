@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: lca-gpt-enterprise
+    runtime: docker
+    repo: https://github.com/REPLACE_ME/lca-gpt
+    branch: main
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: poolside/laguna-s-2.1:free
+      - key: SERPER_API_KEY
+        sync: false
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USERNAME
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

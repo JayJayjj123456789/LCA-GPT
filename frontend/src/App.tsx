@@ -37,7 +37,7 @@ export default function App() {
       case 'audit':
         return <AuditView analysis={analysis} graphKey={graphKey} onAnalyzed={handleAnalyzed} />
       case 'graph':
-        return <GraphView analysis={analysis} graphKey={graphKey} onNavigate={setActiveView} />
+        return <GraphView analysis={analysis} audits={audits} graphKey={graphKey} onNavigate={setActiveView} />
       case 'strategies':
         return <StrategiesView analysis={analysis} />
       case 'reports':

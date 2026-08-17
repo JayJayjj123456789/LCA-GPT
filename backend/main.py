@@ -8,7 +8,8 @@ import tempfile
 import uvicorn
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.analyzer import (
     analyze_enterprise_carbon,
@@ -33,9 +34,13 @@ app = FastAPI(
     version="1.0.0",
 )
 
+_cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+if not _cors_origins:
+    _cors_origins = ["http://localhost:5173", "http://localhost:8501"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8501"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -131,6 +136,10 @@ async def analyze_file(file: UploadFile = File(...)):
 
         # Enrich notes with source URLs if AI didn't include them
         _enrich_notes(data)
+
+        # Recalculate total_estimated_co2 using the updated emission factors
+        # so it matches what the Matrix LCA (h = Q·B·A⁻¹·f) will compute.
+        _recalculate_total_co2(data)
 
         try:
             ingest_analysis_to_graph(data)
@@ -512,6 +521,24 @@ def _merge_duplicate_energy(energies: list[dict]) -> list[dict]:
     return merged
 
 
+def _recalculate_total_co2(data: dict) -> None:
+    """Recalculate total_estimated_co2 from the (possibly enriched) emission factors.
+
+    The LLM's original total is stale after _enrich_notes() updates EFs.
+    This ensures total_estimated_co2 == sum(amount * ef) across all items,
+    which is the same formula the Matrix LCA (h = Q·B·A⁻¹·f with A=I) uses.
+    """
+    total = 0.0
+    for m in data.get("materials", []):
+        total += (m.get("amount") or 0) * (m.get("emission_factor") or 0)
+    for e in data.get("energy", []):
+        total += (e.get("usage") or 0) * (e.get("emission_factor") or 0)
+    for t in data.get("transport", []):
+        total += (t.get("distance") or 0) * (t.get("emission_factor") or 0)
+    data["total_estimated_co2"] = round(total, 4)
+    logger.info(f"Recalculated total_estimated_co2 = {data['total_estimated_co2']} kg CO₂-eq")
+
+
 def _enrich_notes(data: dict) -> None:
     """Enrich audit items with verified emission factors and trusted source URLs.
 
@@ -581,6 +608,29 @@ def _enrich_notes(data: dict) -> None:
             )
         else:
             t["note"] = clean_note(t.get("note", ""), method, "transport")
+
+
+# ─── Static frontend (production) ───────────────────────────────────
+
+_DIST_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+
+if os.path.isdir(_DIST_DIR):
+    app.mount(
+        "/assets",
+        StaticFiles(directory=os.path.join(_DIST_DIR, "assets")),
+        name="assets",
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        """Serve built frontend; SPA fallback to index.html for non-API routes."""
+        if full_path.startswith("api/"):
+            raise HTTPException(404, "Not found")
+        candidate = os.path.join(_DIST_DIR, full_path)
+        if full_path and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        return FileResponse(os.path.join(_DIST_DIR, "index.html"))
+    logger.info(f"Static frontend mounted from {_DIST_DIR}")
 
 
 if __name__ == "__main__":

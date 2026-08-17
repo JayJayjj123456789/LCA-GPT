@@ -32,7 +32,14 @@ frontend/node_modules/
 
 # Build output
 frontend/dist/
+*.tsbuildinfo
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated data (auto-created at runtime)
+data/audits_store.json
+data/audits_full.json
+.backend.pid
+backend/.backend.pid
