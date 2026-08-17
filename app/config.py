@@ -13,7 +13,7 @@ SECRET_DATA_KEY = os.getenv("SECRET_DATA_KEY", "")
 # ─── Active LLM provider ──────────────────────────────────────────────────────
 # Groq is used when GROQ_API_KEY is present; falls back to OpenRouter otherwise.
 _GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-_GROQ_MODEL   = os.getenv("GROQ_MODEL", "groq/compound")
+_GROQ_MODEL   = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 _OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
