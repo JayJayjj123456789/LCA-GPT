@@ -56,7 +56,7 @@ export default function App() {
         onNavigate={setActiveView}
       />
       <main
-        className="flex-1 md:ml-96 min-h-screen overflow-y-auto"
+        className="flex-1 md:ml-80 min-h-screen overflow-y-auto"
         style={{ background: '#10150b' }}
       >
         <div key={activeView} className="animate-fade-in">

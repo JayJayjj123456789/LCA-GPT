@@ -77,12 +77,12 @@ export default function StrategiesView({ analysis }: Props) {
             style={{ background: '#272c20', borderBottom: '1px solid rgba(68,72,65,0.3)' }}>
             <div className="p-2 rounded-full" style={{ background: 'rgba(185,204,176,0.2)' }}>
               <span className="material-symbols-outlined"
-                style={{ color: '#b9ccb0', fontSize: 22, fontVariationSettings: "'FILL' 1" }}>
+                style={{ color: '#b9ccb0', fontSize: 19, fontVariationSettings: "'FILL' 1" }}>
                 psychology
               </span>
             </div>
             <div>
-              <h2 className="text-2xl font-medium"
+              <h2 className="text-xl font-medium"
                 style={{ fontFamily: 'Literata, serif', color: '#e0e5d3' }}>
                 AI Strategy Consultant
               </h2>
@@ -168,7 +168,7 @@ export default function StrategiesView({ analysis }: Props) {
               <div className="relative z-10">
                 <h3 className="text-[28px] font-semibold mb-4 flex items-center gap-2"
                   style={{ fontFamily: 'Literata, serif', color: '#e0e5d3' }}>
-                  <span className="material-symbols-outlined" style={{ color: '#b9ccb0', fontSize: 26 }}>lightbulb</span>
+                  <span className="material-symbols-outlined" style={{ color: '#b9ccb0', fontSize: 22 }}>lightbulb</span>
                   AI Recommendations
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

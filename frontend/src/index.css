@@ -72,14 +72,14 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 body {
   background-color: var(--color-background);
   color: var(--color-on-background);
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -92,7 +92,7 @@ body {
 
 .text-display-lg {
   font-family: 'Literata', Georgia, serif;
-  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-size: clamp(2rem, 4.5vw, 2.75rem);
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.02em;
@@ -100,14 +100,14 @@ body {
 
 .text-headline-lg {
   font-family: 'Literata', Georgia, serif;
-  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
   font-weight: 600;
   line-height: 1.2;
 }
 
 .text-headline-md {
   font-family: 'Literata', Georgia, serif;
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 500;
   line-height: 1.35;
 }
@@ -144,7 +144,7 @@ body {
 .card {
   background-color: var(--color-surface-container);
   border: 1px solid rgba(68,72,65,0.5);
-  border-radius: 1.25rem;
+  border-radius: 1rem;
   position: relative;
   overflow: hidden;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -233,7 +233,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem; height: 2.5rem;
+  width: 2.25rem; height: 2.25rem;
   border-radius: 0.5rem;
   color: var(--color-on-surface-variant);
   transition: background 0.15s, color 0.15s;

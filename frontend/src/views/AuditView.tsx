@@ -45,10 +45,10 @@ export default function AuditView({ analysis, graphKey, onAnalyzed }: Props) {
           <div className="noise-bg" />
           <div className="relative z-10 flex flex-col gap-5 h-full">
             <div className="flex justify-between items-center">
-              <h3 style={{ fontFamily: 'Literata, Georgia, serif', color: '#e0e5d3', fontSize: 24, fontWeight: 500 }}>
+              <h3 style={{ fontFamily: 'Literata, Georgia, serif', color: '#e0e5d3', fontSize: 20, fontWeight: 500 }}>
                 Data Sources
               </h3>
-              <span className="material-symbols-outlined" style={{ color: '#8e9289', fontSize: 26 }}>upload_file</span>
+              <span className="material-symbols-outlined" style={{ color: '#8e9289', fontSize: 22 }}>upload_file</span>
             </div>
             <p style={{ color: '#c4c8be', fontSize: 16 }}>
               Upload vendor invoices, LCA PDFs, or raw material manifests to extract footprint data.
@@ -66,7 +66,7 @@ export default function AuditView({ analysis, graphKey, onAnalyzed }: Props) {
           <div className="relative z-10 p-7 flex justify-between items-center"
             style={{ borderBottom: '1px solid #31372a', background: '#1c2116' }}>
             <div>
-              <h3 style={{ fontFamily: 'Literata, Georgia, serif', color: '#e0e5d3', fontSize: 24, fontWeight: 500 }}>
+              <h3 style={{ fontFamily: 'Literata, Georgia, serif', color: '#e0e5d3', fontSize: 20, fontWeight: 500 }}>
                 Supply Chain Topology
               </h3>
               <p style={{ color: '#8e9289', marginTop: 4, fontSize: 15 }}>

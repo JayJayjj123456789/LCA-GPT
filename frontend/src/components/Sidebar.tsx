@@ -44,20 +44,20 @@ export default function Sidebar({ analysis, onCleared, activeView, onNavigate }:
   const navContent = (
       <>
       {/* ── Brand Header ── */}
-      <div className="flex items-center gap-4 px-2">
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden shrink-0" style={{ background: '#8b9d83' }}>
-          <span className="material-symbols-outlined text-white" style={{ fontSize: 30, fontVariationSettings: "'FILL' 1" }}>eco</span>
+      <div className="flex items-center gap-3 px-2">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden shrink-0" style={{ background: '#8b9d83' }}>
+          <span className="material-symbols-outlined text-white" style={{ fontSize: 24, fontVariationSettings: "'FILL' 1" }}>eco</span>
         </div>
         <div>
-          <h1 className="text-xl font-semibold leading-tight" style={{ fontFamily: 'Literata, Georgia, serif', color: '#b9ccb0', maxWidth: 180 }}>Global Supply Chain</h1>
-          <p style={{ color: '#8e9289', fontSize: 15 }}>FY24 Carbon Audit</p>
+          <h1 className="text-lg font-semibold leading-tight" style={{ fontFamily: 'Literata, Georgia, serif', color: '#b9ccb0', maxWidth: 180 }}>Global Supply Chain</h1>
+          <p style={{ color: '#8e9289', fontSize: 13 }}>FY24 Carbon Audit</p>
         </div>
       </div>
       {/* ── New Audit CTA ── */}
       <button onClick={() => { onNavigate('audit'); setMobileOpen(false) }}
-        className="w-full py-2.5 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-90"
-        style={{ background: '#b9ccb0', color: '#253421', fontSize: 16, letterSpacing: '0.05em' }}>
-        <span className="material-symbols-outlined" style={{ fontSize: 24, fontVariationSettings: "'FILL' 1" }}>add</span>
+        className="w-full py-2 px-3 rounded-xl font-semibold flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-90"
+        style={{ background: '#b9ccb0', color: '#253421', fontSize: 14, letterSpacing: '0.05em' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 20, fontVariationSettings: "'FILL' 1" }}>add</span>
         New Audit
       </button>
       {/* ── Main Navigation ── */}
@@ -67,11 +67,11 @@ export default function Sidebar({ analysis, onCleared, activeView, onNavigate }:
           return (
             <li key={key}>
               <button onClick={() => { onNavigate(key); setMobileOpen(false) }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-base font-medium transition-all cursor-pointer text-left"
-                style={{ background: isActive ? 'rgba(139,157,131,0.15)' : 'transparent', color: isActive ? '#b9ccb0' : '#c4c8be', fontWeight: isActive ? 700 : 400, fontSize: 16 }}
+                className="w-full flex items-center gap-3 px-4 py-2 rounded-xl text-base font-medium transition-all cursor-pointer text-left"
+                style={{ background: isActive ? 'rgba(139,157,131,0.15)' : 'transparent', color: isActive ? '#b9ccb0' : '#c4c8be', fontWeight: isActive ? 700 : 400, fontSize: 14 }}
                 onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(49,55,42,0.6)' }}
                 onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 26, fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0", color: isActive ? '#b9ccb0' : '#8e9289' }}>{icon}</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 22, fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0", color: isActive ? '#b9ccb0' : '#8e9289' }}>{icon}</span>
                 {label}
               </button>
             </li>
@@ -81,26 +81,26 @@ export default function Sidebar({ analysis, onCleared, activeView, onNavigate }:
       {/* ── Footer Actions ── */}
       <div className="flex flex-col gap-2">
         {analysis && (
-          <button onClick={handleExport} className="w-full py-2.5 px-4 font-bold rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2.5"
-            style={{ color: '#b9ccb0', border: '1px solid rgba(185,204,176,0.3)', fontSize: 16 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>download</span>Export PDF
+          <button onClick={handleExport} className="w-full py-2 px-4 font-bold rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2.5"
+            style={{ color: '#b9ccb0', border: '1px solid rgba(185,204,176,0.3)', fontSize: 14 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>Export PDF
           </button>
         )}
-        <button onClick={handleClear} className="w-full py-2.5 px-4 font-bold rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2.5"
-          style={{ color: '#c0392b', border: '1px solid rgba(192,57,43,0.4)', background: 'rgba(192,57,43,0.08)', fontSize: 16 }}
+        <button onClick={handleClear} className="w-full py-2 px-4 font-bold rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2.5"
+          style={{ color: '#c0392b', border: '1px solid rgba(192,57,43,0.4)', background: 'rgba(192,57,43,0.08)', fontSize: 14 }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(192,57,43,0.16)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(192,57,43,0.08)' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 22, fontVariationSettings: "'FILL' 1" }}>delete_sweep</span>Clear Data
+          <span className="material-symbols-outlined" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>delete_sweep</span>Clear Data
         </button>
       </div>
       {/* ── Footer Nav ── */}
       <ul className="flex flex-col gap-1 pt-3" style={{ borderTop: '1px solid rgba(68,72,65,0.4)' }}>
         {FOOTER_NAV.map(({ label, icon }) => (
           <li key={label}>
-            <a href="#" className="flex items-center gap-3 px-4 py-2 rounded-xl text-base transition-colors" style={{ color: '#8e9289', fontSize: 15 }}
+            <a href="#" className="flex items-center gap-3 px-4 py-2 rounded-xl text-base transition-colors" style={{ color: '#8e9289', fontSize: 13 }}
               onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'rgba(49,55,42,0.6)')}
               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}>
-              <span className="material-symbols-outlined" style={{ fontSize: 26 }}>{icon}</span>{label}
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>{icon}</span>{label}
             </a>
           </li>
         ))}
@@ -148,7 +148,7 @@ export default function Sidebar({ analysis, onCleared, activeView, onNavigate }:
 
       {/* ── Desktop sidebar ── */}
       <nav
-        className="hidden md:flex flex-col h-full p-6 gap-5 fixed left-0 top-0 w-96 z-50 border-r overflow-y-auto"
+        className="hidden md:flex flex-col h-full p-5 gap-4 fixed left-0 top-0 w-80 z-50 border-r overflow-y-auto"
         style={{ background: '#0b1006', borderColor: 'rgba(68,72,65,0.4)', height: '100vh' }}
       >
         {navContent}

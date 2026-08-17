@@ -29,13 +29,13 @@ export default function DashboardView({ analysis, onNavigate }: Props) {
           </div>
           <h1 style={{
             fontFamily: 'Literata, Georgia, serif',
-            fontSize: 'clamp(2rem, 4vw, 3rem)',
+            fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)',
             fontWeight: 700, letterSpacing: '-0.02em',
             color: '#e0e5d3', lineHeight: 1.1,
           }}>
             {analysis?.project_info?.name || 'Overview'}
           </h1>
-          <p style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 17, color: '#8e9289', lineHeight: 1.5 }}>
+          <p style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 15, color: '#8e9289', lineHeight: 1.5 }}>
             System-wide environmental impact summary.
           </p>
         </div>
@@ -136,15 +136,15 @@ export default function DashboardView({ analysis, onNavigate }: Props) {
             background: 'rgba(139,157,131,0.08)', border: '1px solid rgba(139,157,131,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#8b9d83', fontVariationSettings: "'FILL' 1" }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#8b9d83', fontVariationSettings: "'FILL' 1" }}>
               eco
             </span>
           </div>
           <div style={{ maxWidth: 440 }}>
-            <h2 style={{ fontFamily: 'Literata, Georgia, serif', fontSize: 28, fontWeight: 600, color: '#e0e5d3', marginBottom: 12 }}>
+            <h2 style={{ fontFamily: 'Literata, Georgia, serif', fontSize: 24, fontWeight: 600, color: '#e0e5d3', marginBottom: 10 }}>
               No Active Audit
             </h2>
-            <p style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 16, color: '#8e9289', lineHeight: 1.6 }}>
+            <p style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 14, color: '#8e9289', lineHeight: 1.6 }}>
               Upload a supply chain PDF document to run an AI-powered carbon footprint analysis.
             </p>
           </div>
@@ -152,15 +152,15 @@ export default function DashboardView({ analysis, onNavigate }: Props) {
             onClick={() => onNavigate('audit')}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
-              padding: '16px 36px', borderRadius: 16,
+              padding: '13px 28px', borderRadius: 14,
               background: '#b9ccb0', color: '#253421',
-              fontSize: 16, fontWeight: 700, fontFamily: 'Plus Jakarta Sans, sans-serif',
+              fontSize: 14, fontWeight: 700, fontFamily: 'Plus Jakarta Sans, sans-serif',
               border: 'none', cursor: 'pointer',
             }}
             onMouseEnter={e => ((e.currentTarget as HTMLElement).style.opacity = '0.88')}
             onMouseLeave={e => ((e.currentTarget as HTMLElement).style.opacity = '1')}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>upload_file</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>upload_file</span>
             Start New Audit
           </button>
         </div>

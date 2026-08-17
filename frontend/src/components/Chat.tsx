@@ -57,7 +57,7 @@ export default function Chat() {
               <div className="w-14 h-14 rounded-2xl bg-primary-container/15 border border-primary-container/25 flex items-center justify-center">
                 <span
                   className="material-symbols-outlined text-primary"
-                  style={{ fontSize: 26, fontVariationSettings: "'FILL' 1" }}
+                  style={{ fontSize: 22, fontVariationSettings: "'FILL' 1" }}
                 >
                   psychology
                 </span>
