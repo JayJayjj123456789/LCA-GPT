@@ -24,7 +24,7 @@
 
 ## Overview
 
-LCA-GPT Enterprise reads supply chain documents (PDF, Excel, CSV), uses an LLM to extract carbon footprint data, stores results in a Neo4j knowledge graph, and presents everything through an interactive React dashboard. Users can chat with their audit data via Graph RAG, run advanced mathematical LCA models, and export ISO 14067-compliant PDF reports.
+LCA-GPT Enterprise reads supply chain documents (PDF, Excel, CSV), uses an LLM to extract carbon footprint data, stores results in PostgreSQL (Neon), and presents everything through an interactive React dashboard. Users can chat with their audit data via AI, run advanced mathematical LCA models, and export ISO 14067-compliant PDF reports.
 
 **Core formula:** `CO₂e = Σ (Activity × Emission Factor)`
 
@@ -40,10 +40,9 @@ LCA-GPT Enterprise reads supply chain documents (PDF, Excel, CSV), uses an LLM t
 | Charts | Plotly.js (react-plotly.js) |
 | Graph Viz | ReactFlow |
 | Backend | FastAPI + Uvicorn (Python) |
-| LLM (primary) | Groq — `llama-3.3-70b-versatile` |
+| LLM (primary) | Groq — `openai/gpt-oss-120b` |
 | LLM (fallback) | OpenRouter — `poolside/laguna-s-2.1:free` |
-| Graph Database | Neo4j (Bolt / Aura cloud) |
-| Embeddings | Google Gemini — `gemini-embedding-2` (3072-dim) |
+| Database | PostgreSQL (Neon, serverless) |
 | Web Search | Serper.dev (Google Search API) |
 | PDF Parsing | PyMuPDF (fitz) |
 | Excel/CSV Parsing | pandas |
@@ -58,13 +57,13 @@ LCA-GPT Enterprise reads supply chain documents (PDF, Excel, CSV), uses an LLM t
 LCA-GPT/
 ├── app/                        # Core Python business logic
 │   ├── config.py               # Env vars + LLM provider selection (Groq → OpenRouter)
+│   ├── auth.py                 # Multi-user auth (register/login/sessions)
 │   ├── analyzer.py             # PDF/Excel text extraction + LLM analysis
-│   ├── database.py             # Neo4j graph operations (MERGE/CREATE/MATCH)
 │   ├── analytics.py            # Basic Plotly charts (hotspot, pie, sankey)
 │   ├── analytics_advanced.py   # Advanced charts (tornado, waterfall, Monte Carlo)
 │   ├── report.py               # PDF report generation (ReportLab / ISO 14067)
 │   ├── search.py               # Serper.dev EF lookup + 40+ material fallback DB
-│   ├── vector_store.py         # Gemini embeddings + cosine similarity search
+│   ├── vector_store.py         # PostgreSQL audit storage + similarity search
 │   └── math/
 │       ├── matrix_lca.py       # Heijungs matrix LCA: h = Q·B·A⁻¹·f
 │       ├── leontief.py         # Leontief EEIO-LCA: x = (I−A)⁻¹·y
@@ -74,7 +73,7 @@ LCA-GPT/
 │       └── uncertainty.py      # Monte Carlo uncertainty propagation
 ├── backend/
 │   ├── main.py                 # FastAPI entry point — all API routes
-│   ├── graph_rag.py            # Graph RAG chat (Neo4j Cypher + LLM)
+│   ├── graph_rag.py            # AI chat over the user's stored audits
 │   └── cache.py                # In-memory MD5-keyed response cache
 ├── frontend/
 │   ├── src/
@@ -82,7 +81,7 @@ LCA-GPT/
 │   │   ├── api.ts              # Axios API client (fully typed)
 │   │   ├── main.tsx            # React entry point
 │   │   ├── components/
-│   │   │   ├── Sidebar.tsx     # Navigation + Clear DB button
+│   │   │   ├── Sidebar.tsx     # Navigation + Delete Audits button
 │   │   │   ├── Dashboard.tsx   # 4 KPI metric cards
 │   │   │   ├── Charts.tsx      # Plotly charts (hotspot, pie, sankey, advanced)
 │   │   │   ├── PdfUploader.tsx # Multi-file upload + mergeResults()
@@ -143,9 +142,8 @@ User (Browser: http://localhost:5173)
    FastAPI Backend (http://localhost:8001)
         │
         ├── LLM (Groq / OpenRouter)
-        ├── Neo4j (Cloud graph DB)
-        ├── Serper.dev (Google Search)
-        └── Gemini (Embeddings)
+        ├── PostgreSQL (Neon — audits, users, sessions)
+        └── Serper.dev (Google Search)
 ```
 
 ---
@@ -226,19 +224,11 @@ _enrich_notes(data)                          [app/search.py]
         └── Transport — same EF lookup as materials
         │
         ▼
-ingest_analysis_to_graph(data)               [app/database.py → Neo4j]
+store_full_audit(data, owner)                  [app/vector_store.py → PostgreSQL]
         │
-        ├── MERGE (p:Project {name}) SET supplier, total_co2, score
-        ├── CREATE (c:CarbonImpact) MERGE (p)-[:PRODUCED_IMPACT]->(c)
-        ├── MERGE (m:Material)      MERGE (p)-[:CONSISTS_OF]->(m)
-        ├── CREATE (e:Energy)       MERGE (p)-[:POWERED_BY]->(e)
-        └── CREATE (t:Transport)    MERGE (p)-[:SHIPPED_VIA]->(t)
-
-        Node colors in ReactFlow:
-          Project     #238636 (green)
-          Material    #d29922 (yellow)
-          Energy      #f85149 (red)
-          Transport   #a371f7 (purple)
+        ├── INSERT JSONB row into audits (owner_id = user email)
+        ├── save_audit_to_memory() → JSON file fallback
+        └── Chat cache cleared on new audit
         │
         ▼
 save_audit_to_memory(data)                   [app/vector_store.py]
@@ -295,38 +285,32 @@ onAnalyzed(data) → App.tsx
 
 ---
 
-## Step 4 — Chat (Graph RAG)
+## Step 4 — Chat (AI over stored audits)
 
 ```
 User types question → POST /api/chat { question }
         │
-ask_graph(question)                          [backend/graph_rag.py]
+ask_graph(question, owner)                     [backend/graph_rag.py]
         │
         ├── 1. Check MD5 cache → return instantly if hit (3.5s → 0.2s)
         │
-        ├── 2. Keyword extraction from question:
+        ├── 2. Load the user's audits from PostgreSQL (owner-scoped)
+        │
+        ├── 3. Keyword extraction from question:
         │   material  → ['material', 'steel', 'aluminum', 'วัสดุ', ...]
         │   energy    → ['energy', 'electricity', 'พลังงาน', ...]
         │   transport → ['transport', 'truck', 'ขนส่ง', ...]
         │   emission  → ['co2', 'carbon', 'คาร์บอน', ...]
         │   supplier  → ['supplier', 'ซัพพลายเออร์', ...]
         │
-        ├── 3. Dynamic Cypher query based on topic:
-        │   material  → MATCH (n:Material)-[r]->(m) ... LIMIT 200
-        │   energy    → MATCH (n:Energy)-[r]->(m)   ... LIMIT 200
-        │   transport → MATCH (n:Transport)-[r]->(m)... LIMIT 200
-        │   default   → MATCH (n)-[r]->(m)          ... LIMIT 500
-        │
-        ├── 4. If Neo4j fails/empty → fallback to audits_full.json (last 3 audits)
-        │
-        ├── 5. LLM call:
+        ├── 4. LLM call with the relevant audit data as context:
         │   system: "Answer ONLY using audit data below. Do NOT fabricate.
         │            If not found → respond: 'ไม่มีข้อมูลนี้ใน audit ปัจจุบัน'"
         │   user:   "Audit data:\n{context}\n\nQuestion: {question}"
         │   temperature: 0.1  top_p: 0.9  frequency_penalty: 0.3  max_tokens: 800
         │   Supports Thai and English automatically
         │
-        └── 6. Cache result → return answer
+        └── 5. Cache result → return answer
 ```
 
 ---
@@ -369,10 +353,16 @@ Steps:      1. Normalize  2. Weight  3. Ideal+ / Ideal−
 
 | Method | Path | Description |
 |---|---|---|
+| `POST` | `/api/auth/register` | Register account (first user claims legacy audits) |
+| `POST` | `/api/auth/login` | Login → bearer session token |
+| `GET` | `/api/auth/me` | Current session user |
 | `GET` | `/api/health` | Health check |
-| `POST` | `/api/analyze` | Upload file → AI audit → Neo4j ingestion |
-| `GET` | `/api/graph` | Supply chain graph (nodes + edges) |
-| `DELETE` | `/api/graph` | Clear Neo4j graph |
+| `POST` | `/api/analyze` | Upload file → AI audit → store in PostgreSQL |
+| `GET` | `/api/audits` | List user's audits (newest first) |
+| `GET` | `/api/audits/meta` | id + name + date of user's audits |
+| `DELETE` | `/api/audits` | Delete all of the user's audits |
+| `DELETE` | `/api/audits/{id}` | Delete one audit (owner-scoped) |
+| `GET` | `/api/audits/similar` | Find similar past audits |
 | `POST` | `/api/charts/hotspot` | Carbon hotspot bar chart |
 | `POST` | `/api/charts/pie` | Emissions breakdown pie chart |
 | `POST` | `/api/charts/sankey` | Supply chain Sankey diagram |
@@ -380,8 +370,8 @@ Steps:      1. Normalize  2. Weight  3. Ideal+ / Ideal−
 | `POST` | `/api/charts/monte-carlo` | Monte Carlo histogram |
 | `POST` | `/api/charts/waterfall` | Waterfall contribution chart |
 | `POST` | `/api/reports/pdf` | Generate ISO 14067 PDF report |
-| `POST` | `/api/chat` | Graph RAG chat (Neo4j + LLM) |
-| `GET` | `/api/audits/similar` | Find similar past audits (cosine similarity) |
+| `POST` | `/api/chat` | AI chat over the user's audits |
+| `GET` | `/api/secret/audits` | Admin dump (requires SECRET_DATA_KEY) |
 | `POST` | `/api/math/matrix-lca` | Heijungs matrix LCA |
 | `POST` | `/api/math/leontief` | Leontief EEIO-LCA |
 | `POST` | `/api/math/topsis` | TOPSIS supplier ranking |
@@ -395,16 +385,15 @@ Steps:      1. Normalize  2. Weight  3. Ideal+ / Ideal−
 
 | Service | Purpose | Priority |
 |---|---|---|
-| **Groq** (`api.groq.com`) | LLM inference — `llama-3.3-70b-versatile` | Primary |
+| **Groq** (`api.groq.com`) | LLM inference — `openai/gpt-oss-120b` | Primary |
 | **OpenRouter** (`openrouter.ai`) | LLM inference — `poolside/laguna-s-2.1:free` | Fallback |
-| **Google Gemini** | Semantic embeddings — `gemini-embedding-2` (3072-dim) | Audit similarity |
+| **Neon (PostgreSQL)** | Audits, users, sessions — persistent storage | Primary DB |
 | **Serper.dev** | Google Search API for real-time EF source lookup | Per material |
-| **Neo4j Aura** | Cloud graph database | Currently paused |
 
 **LLM provider selection** (`app/config.py`):
 ```python
 if GROQ_API_KEY:
-    ACTIVE_MODEL    = "llama-3.3-70b-versatile"
+    ACTIVE_MODEL    = "openai/gpt-oss-120b"
     ACTIVE_BASE_URL = "https://api.groq.com/openai/v1"
 else:
     ACTIVE_MODEL    = "poolside/laguna-s-2.1:free"
@@ -417,22 +406,22 @@ else:
 
 | Storage | What | Lifetime |
 |---|---|---|
+| Neon (PostgreSQL, cloud) | Audits (JSONB), users, sessions | Permanent |
 | `backend/cache.py` (RAM) | MD5-keyed chat responses | Until restart or new upload |
-| `data/audits_store.json` | Lightweight audit + 3072-dim embedding vector | Permanent (local file) |
-| `data/audits_full.json` | Complete audit JSON history | Permanent (local file) |
-| Neo4j Aura (cloud) | Graph of Projects → Materials / Energy / Transport | Cloud (currently offline) |
+| `data/audits_store.json` | JSON-file fallback audit store (when DATABASE_URL unset) | Permanent (local file) |
+| `data/audits_full.json` | Complete audit JSON history (fallback) | Permanent (local file) |
 
-**Two JSON files per audit — different purposes:**
+**JSON files per audit — fallback stores (used only when DATABASE_URL is unset):**
 
 ```
 audits_store.json                      audits_full.json
 ─────────────────────────────          ─────────────────────────────────────
 Used for: Similar Audits search        Used for: Chat fallback context
 Keys: project_name, summary,           Keys: project_info, materials[],
-      total_co2, materials[names],           energy[], transport[],
-      embedding[3072 floats]                 total_estimated_co2,
-                                             optimization_score,
-Think: "business card"                       recommendations, summary
+      total_co2, materials[names]            energy[], transport[],
+                                            total_estimated_co2,
+Think: "business card"                      optimization_score,
+                                            recommendations, summary
                                        Think: "full report"
 ```
 
@@ -458,7 +447,7 @@ Think: "business card"                       recommendations, summary
 pip install -r requirements.txt
 
 # 2. Configure environment variables
-# Edit .env with your API keys (Groq, Neo4j, Gemini, Serper)
+# Edit .env with your API keys (Groq, OpenRouter, Serper) and DATABASE_URL
 
 # 3. Start the backend (FastAPI)
 python -m uvicorn backend.main:app --reload --port 8001
