@@ -12,7 +12,7 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-120b
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
@@ -23,5 +23,7 @@ services:
         sync: false
       - key: SECRET_DATA_KEY
         sync: false
+      - key: DISABLE_AUTH
+        value: "1"
       - key: CORS_ORIGINS
         value: https://lca-gpt-enterprise.onrender.com

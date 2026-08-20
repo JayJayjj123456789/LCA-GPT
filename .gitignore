@@ -43,3 +43,8 @@ data/audits_store.json
 data/audits_full.json
 .backend.pid
 backend/.backend.pid
+
+# Logs
+*.log
+backend.err.log
+frontend.err.log

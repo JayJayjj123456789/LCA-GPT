@@ -19,9 +19,9 @@ export default function App() {
   const [graphKey, setGraphKey] = useState(0)
   const [activeView, setActiveView] = useState<NavView>('dashboard')
 
-  // Restore session on load
+  // Restore session on load; no token → auto-login as guest (auth disabled)
   useEffect(() => {
-    if (!getToken()) { setAuthLoading(false); return }
+    if (!getToken()) { setUser('guest'); setAuthLoading(false); return }
     getMe()
       .then(setUser)
       .catch(() => { logout() })
@@ -59,7 +59,7 @@ export default function App() {
 
   const handleLogout = async () => {
     await logout()
-    setUser(null)
+    setUser('guest')   // auth is disabled locally — guest session continues
     setAnalysis(null)
     setAudits([])
     setActiveView('dashboard')

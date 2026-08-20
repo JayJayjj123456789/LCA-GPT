@@ -35,21 +35,9 @@ def analyze_enterprise_carbon(text: str) -> str | None:
         "You are an Expert LCA Sustainability Consultant. Your task is to extract carbon footprint data from ANY supply chain document — invoices, purchase orders, BOMs, receipts, sustainability reports, etc. "
         "CRITICAL: You MUST always return materials/energy/transport with real data. NEVER return empty arrays if there are line items in the document. "
         "INVOICE RULE: For invoices/receipts, map EVERY line item to a material entry. Use Qty × Unit as the amount. "
-        "ELECTRONICS/IT RULE: For electronics, use per-unit lifecycle CO2e (not weight-based). Known per-unit EF benchmarks (kgCO2e/unit): "
-        "Laptop/Notebook: 300-400 kgCO2e/unit (use 350), "
-        "Tablet/iPad: 80-120 kgCO2e/unit (use 100), "
-        "Desktop PC: 400-600 kgCO2e/unit (use 500), "
-        "Monitor/Display 27-55': 200-350 kgCO2e/unit (use 250), "
-        "Large Display 75'+: 400-600 kgCO2e/unit (use 500), "
-        "Smartphone: 60-80 kgCO2e/unit (use 70), "
-        "Network Switch/AP: 50-100 kgCO2e/unit (use 75), "
-        "Server/PDU: 1000-2000 kgCO2e/unit (use 1500), "
-        "Printer/MFP: 150-300 kgCO2e/unit (use 200), "
-        "Office Chair: 50-80 kgCO2e/unit (use 65), "
-        "Sit-Stand Desk: 80-150 kgCO2e/unit (use 120), "
-        "Software License (SaaS): estimate 0.1-0.5 kgCO2e/user/year for cloud energy (use 0.2). "
+        "ELECTRONICS/IT RULE: For electronics, use per-unit lifecycle CO2e (not weight-based). The system will verify and replace every emission_factor with a real sourced value after analysis, so do not invent precision — use a reasonable published per-unit benchmark and always fill the 'note' field with the source. "
         "For non-electronics materials use mass-based EF in kg. "
-        "Methodology: 1. Materials: Ecoinvent 3.9 / product LCA studies 2. Energy: Thailand Grid 0.499 kgCO2e/kWh 3. Transport: GLEC Framework v3. "
+        "Methodology: 1. Materials: Ecoinvent 3.9 / product LCA studies 2. Energy: Thailand Grid emission factor (TGO) 3. Transport: GLEC Framework v3. "
         "CRITICAL RULE: Every 'note' field MUST include a REAL, VERIFIABLE source URL. "
         "Format: 'Source: [Database] — https://[url]'. "
         "ONLY use URLs from the following verified working domains: "
@@ -90,7 +78,7 @@ def analyze_enterprise_carbon(text: str) -> str | None:
           "name": "Product/Material name from invoice line",
           "amount": 120.0,
           "unit": "pcs",
-          "emission_factor": 350.0,
+          "emission_factor": 0.0,
           "note": "Source: HP Product Carbon Footprint — https://h20195.www2.hp.com/v2/getpdf.aspx/c08436529.pdf"
         }}
       ],
@@ -99,7 +87,7 @@ def analyze_enterprise_carbon(text: str) -> str | None:
           "type": "Electricity (estimated operational use)",
           "usage": 0.0,
           "unit": "kWh",
-          "emission_factor": 0.499,
+          "emission_factor": 0.0,
           "note": "Source: TGO Thailand Grid 2023 — https://www.tgo.or.th"
         }}
       ],
@@ -108,7 +96,7 @@ def analyze_enterprise_carbon(text: str) -> str | None:
           "method": "Road Freight (estimated delivery)",
           "distance": 0.0,
           "unit": "km",
-          "emission_factor": 0.1,
+          "emission_factor": 0.0,
           "note": "Source: GLEC Framework v3 — https://www.smartfreightcentre.org/en/glec/"
         }}
       ],
@@ -123,7 +111,7 @@ def analyze_enterprise_carbon(text: str) -> str | None:
     Rules:
     - EVERY invoice line item → one materials entry (do not skip any)
     - Use the Qty column as 'amount'
-    - For software/SaaS licenses: amount = number of users, unit = 'license', EF = 0.2 kgCO2e/license
+    - For software/SaaS licenses: amount = number of users, unit = 'license' (the emission_factor will be filled by the system's EF lookup)
     - For services with no physical product: still create an entry using estimated resource/energy equivalents
     - Calculate total_estimated_co2 = sum(amount × emission_factor) for all items
     - optimization_score = 0-100 based on sustainability of purchasing choices

@@ -7,19 +7,28 @@ survive server restarts and redeploys.
 
 import hashlib
 import logging
+import os
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
+from dotenv import load_dotenv
 from fastapi import Depends, Header, HTTPException
 
 from app.vector_store import _pg_conn, _pg_enabled, _pg_ensure
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _PBKDF2_ITERATIONS = 200_000
 _SESSION_TTL_DAYS = 30
+
+# When DISABLE_AUTH is set, every request is treated as a single guest user —
+# useful for local/demo runs where login is not wanted.
+_DISABLE_AUTH = os.getenv("DISABLE_AUTH", "").lower() in ("1", "true", "yes")
+_GUEST_OWNER  = os.getenv("GUEST_OWNER", "guest@local")
 
 
 # ── Password hashing ─────────────────────────────────────────────────────────
@@ -141,6 +150,8 @@ def validate_registration(email: str, password: str) -> str | None:
 
 def require_user(authorization: str = Header(None)) -> str:
     """Return the authenticated user's email or raise HTTP 401."""
+    if _DISABLE_AUTH:
+        return _GUEST_OWNER
     if not _pg_enabled():
         raise HTTPException(503, "Database not configured")
     if not authorization or not authorization.lower().startswith("bearer "):

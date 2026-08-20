@@ -663,13 +663,13 @@ def _recalculate_total_co2(data: dict) -> None:
 def _enrich_notes(data: dict) -> None:
     """Enrich audit items with verified emission factors and trusted source URLs.
 
-    For each material / transport item:
-      1. Call search_emission_factor() — checks local fallback DB first, then Serper
-         for unknown materials.
+    For each material / energy / transport item:
+      1. Call search_emission_factor() — checks local fallback DB first (exact
+         + fuzzy name matching), then Serper for unknown materials.
       2. If a real EF value is returned, update emission_factor + note source.
       3. Always ensure note has a trusted URL (no broken links).
 
-    Energy items are merged if duplicates, then use fixed known EFs.
+    Energy items are merged if duplicates before the EF lookup.
     """
     from app.search import clean_note, search_emission_factor, get_trusted_source
 
@@ -688,11 +688,9 @@ def _enrich_notes(data: dict) -> None:
     # ── Materials: look up EF by material name ────────────────────────────────
     for m in materials:
         name = m.get("name", "")
-        # Strip long parenthetical descriptions → use just the first part
-        short_name = name.split("(")[0].split("—")[0].split("-")[0].strip()
 
-        logger.info(f"  [material] Looking up EF for: '{short_name}'")
-        ef_result = search_emission_factor(short_name)
+        logger.info(f"  [material] Looking up EF for: '{name}'")
+        ef_result = search_emission_factor(name)
 
         if ef_result and ef_result.value > 0:
             old_ef = m.get("emission_factor", 0)
@@ -705,20 +703,31 @@ def _enrich_notes(data: dict) -> None:
             # No EF found — just fix the source URL
             m["note"] = clean_note(m.get("note", ""), name, "material")
 
-    # ── Energy: use fixed trusted EF, just clean note URL ────────────────────
+    # ── Energy: look up EF by energy type (falls back to fixed known EFs) ────
     for e in energies:
-        before = e.get("note", "")
-        e["note"] = clean_note(before, e.get("type", ""), "energy")
-        if e["note"] != before:
-            logger.info(f"  [energy] '{e.get('type','')}' note fixed")
+        etype = e.get("type", "")
+        logger.info(f"  [energy] Looking up EF for: '{etype}'")
+        ef_result = search_emission_factor(etype)
+
+        if ef_result and ef_result.value > 0:
+            old_ef = e.get("emission_factor", 0)
+            e["emission_factor"] = ef_result.value
+            e["note"] = ef_result.source
+            logger.info(
+                f"    EF updated: {old_ef} → {ef_result.value} | {ef_result.source}"
+            )
+        else:
+            before = e.get("note", "")
+            e["note"] = clean_note(before, etype, "energy")
+            if e["note"] != before:
+                logger.info(f"  [energy] '{etype}' note fixed")
 
     # ── Transport: look up EF by transport mode ───────────────────────────────
     for t in transports:
         method = t.get("method", "")
-        short_method = method.split("(")[0].split("—")[0].strip()
 
-        logger.info(f"  [transport] Looking up EF for: '{short_method}'")
-        ef_result = search_emission_factor(short_method)
+        logger.info(f"  [transport] Looking up EF for: '{method}'")
+        ef_result = search_emission_factor(method)
 
         if ef_result and ef_result.value > 0:
             old_ef = t.get("emission_factor", 0)

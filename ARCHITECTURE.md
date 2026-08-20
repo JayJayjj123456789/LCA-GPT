@@ -28,6 +28,8 @@ LCA-GPT Enterprise reads supply chain documents (PDF, Excel, CSV), uses an LLM t
 
 **Core formula:** `CO₂e = Σ (Activity × Emission Factor)`
 
+**Design principle:** the LLM *only extracts* — it never decides the numbers. Every emission factor and total is recomputed by deterministic Python engines (`_enrich_notes` → EF lookup, `_recalculate_total_co2` → Σ activity × EF). There are no hardcoded answers in any system prompt.
+
 **Compliance standards:** ISO 14067 · GHG Protocol · GLEC Framework v3 · IPCC AR6 WG3
 
 ---
@@ -48,6 +50,7 @@ LCA-GPT Enterprise reads supply chain documents (PDF, Excel, CSV), uses an LLM t
 | Excel/CSV Parsing | pandas |
 | PDF Reports | ReportLab (ISO 14067) |
 | Math / LCA | NumPy + SciPy (matrix LCA, Leontief, TOPSIS, Monte Carlo) |
+| Similar-audit search | TF bag-of-words cosine similarity (pure Python, no embeddings) |
 
 ---
 
@@ -63,7 +66,7 @@ LCA-GPT/
 │   ├── analytics_advanced.py   # Advanced charts (tornado, waterfall, Monte Carlo)
 │   ├── report.py               # PDF report generation (ReportLab / ISO 14067)
 │   ├── search.py               # Serper.dev EF lookup + 40+ material fallback DB
-│   ├── vector_store.py         # PostgreSQL audit storage + similarity search
+│   ├── vector_store.py         # PostgreSQL audit storage + TF-cosine similarity
 │   └── math/
 │       ├── matrix_lca.py       # Heijungs matrix LCA: h = Q·B·A⁻¹·f
 │       ├── leontief.py         # Leontief EEIO-LCA: x = (I−A)⁻¹·y
@@ -74,7 +77,8 @@ LCA-GPT/
 ├── backend/
 │   ├── main.py                 # FastAPI entry point — all API routes
 │   ├── graph_rag.py            # AI chat over the user's stored audits
-│   └── cache.py                # In-memory MD5-keyed response cache
+│   ├── cache.py                # In-memory MD5-keyed response cache
+│   └── static/db_view.html     # Admin DB viewer (behind SECRET_DATA_KEY)
 ├── frontend/
 │   ├── src/
 │   │   ├── App.tsx             # Root layout + routing + shared state
@@ -89,8 +93,10 @@ LCA-GPT/
 │   │   │   ├── DataTable.tsx   # Materials/Energy/Transport tables + source URLs
 │   │   │   ├── Chat.tsx        # Chat UI component
 │   │   │   ├── Recommendations.tsx  # Strategic insights panel
-│   │   │   └── PastAudits.tsx  # Similar audits from vector search
+│   │   │   ├── PastAudits.tsx  # Similar audits from vector search
+│   │   │   └── ConfirmModal.tsx# Delete-confirmation dialog
 │   │   └── views/
+│   │       ├── LoginView.tsx       # Register / login forms
 │   │       ├── DashboardView.tsx   # Overview: KPIs + charts + summary
 │   │       ├── AuditView.tsx       # Upload + graph topology + data table
 │   │       ├── GraphView.tsx       # Full-screen ReactFlow graph
@@ -106,14 +112,14 @@ LCA-GPT/
 │   ├── sample_purchase_order.txt   # Same PO as plain text
 │   ├── sample_supply_chain.csv # Test input: multi-category supply chain
 │   ├── sample_invoice.pdf      # ⚠️ WRONG FILE — Thai research report, not an invoice
-│   ├── audits_store.json       # Auto-generated: embedding index (3072-dim vectors)
+│   ├── audits_store.json       # Auto-generated: file-fallback audit index
 │   └── audits_full.json        # Auto-generated: complete audit history
 ├── tests/
 │   ├── conftest.py
 │   ├── test_analyzer.py
-│   ├── test_database.py
-│   ├── test_math.py
-│   └── test_integration.py
+│   ├── test_math.py            # Math engine unit tests
+│   ├── test_sample_po_math.py  # End-to-end numbers on sample_purchase_order.pdf
+│   └── test_integration.py     # Full flow + edge cases
 ├── .env                        # API keys (not in git)
 ├── requirements.txt
 ├── pytest.ini
@@ -129,9 +135,12 @@ User (Browser: http://localhost:5173)
         │
         │  React 19 + Vite + TypeScript + Tailwind
         │
-   [Sidebar] ──────── [Main Content: 6 Views] ──────── [App.tsx State]
-   Navigation         Dashboard                         analysis: AnalysisData
-   + Clear DB         Audit                             audits: AnalysisData[]
+   [LoginView] ── register/login → bearer token
+        │
+   [Sidebar] ──────── [Main Content: 7 Views] ──────── [App.tsx State]
+   Navigation         Login                            analysis: AnalysisData
+   + Clear DB         Dashboard                        audits: AnalysisData[]
+                      Audit
                       Graph
                       Strategies
                       Reports
@@ -175,7 +184,7 @@ User drops files into PdfUploader
 ## Step 2 — Backend Analysis Pipeline
 
 ```
-POST /api/analyze  (multipart/form-data)
+POST /api/analyze  (multipart/form-data, bearer token)
         │
         ├── PDF?    → PyMuPDF (fitz) extracts raw text from all pages
         └── Excel/CSV? → pandas reads all sheets
@@ -189,10 +198,10 @@ analyze_enterprise_carbon(text)              [app/analyzer.py]
         │
         ├── System prompt embeds:
         │   - Role: "Expert LCA Sustainability Consultant"
-        │   - Per-unit EF benchmarks for 20+ electronics (laptop=350, server=1500...)
-        │   - Methodology: Ecoinvent 3.9 / Thailand Grid / GLEC Framework v3
+        │   - Extraction rules: amounts, units, emission factors per item
         │   - Mandatory trusted URL domains (ghgprotocol.org, ecoinvent.org, etc.)
         │   - Strict JSON-only output rule
+        │   - NOTE: no per-item EF answer values are baked into the prompt
         │
         ├── LLM call → Groq (primary) or OpenRouter (fallback)
         │   temperature: 0.1  max_tokens: 2000
@@ -210,35 +219,35 @@ analyze_enterprise_carbon(text)              [app/analyzer.py]
             }
         │
         ▼
-_enrich_notes(data)                          [app/search.py]
+_enrich_notes(data)                          [backend/main.py:663]
         │
-        ├── Materials — EF lookup:
-        │   1. Check _FALLBACK_EF dict (40+ materials, instant, free)
+        ├── Materials — EF lookup per item:
+        │   1. search_emission_factor() → _FALLBACK_EF dict (40+ materials, instant)
         │   2. If unknown → Serper.dev Google Search
         │      - Parses kgCO2e value from search snippets (regex)
         │      - Validates URL against 30+ trusted domains
         │      - Caches result in memory (per process lifetime)
+        │   3. If a real EF is found → overwrite emission_factor + note source URL
+        │      (the LLM's EF is replaced by the verified value)
         │
-        ├── Energy — just fix source URLs (EF stays hardcoded: 0.499 kgCO2e/kWh Thailand Grid)
+        ├── Energy — merge duplicates by type, then keep the extracted EF;
+        │   only the note's source URL is cleaned/validated
         │
-        └── Transport — same EF lookup as materials
+        └── Transport — same EF lookup as materials (by transport mode)
+        │
+        ▼
+_recalculate_total_co2(data)                 [backend/main.py:648]
+        │
+        ├── total = Σ (amount × emission_factor)
+        │   for materials, energy (usage × EF) and transport (distance × EF)
+        └── Overwrites the LLM's total_estimated_co2 with the deterministic sum
         │
         ▼
 store_full_audit(data, owner)                  [app/vector_store.py → PostgreSQL]
         │
         ├── INSERT JSONB row into audits (owner_id = user email)
-        ├── save_audit_to_memory() → JSON file fallback
+        ├── JSON-file fallback when DATABASE_URL is unset
         └── Chat cache cleared on new audit
-        │
-        ▼
-save_audit_to_memory(data)                   [app/vector_store.py]
-        │
-        ├── audits_store.json ← lightweight record + Gemini embedding (3072-dim)
-        │   { project_name, summary, total_co2, materials: [names], embedding: [...] }
-        │
-        └── audits_full.json  ← complete audit JSON, no embedding
-            { project_info, materials, energy, transport,
-              total_estimated_co2, optimization_score, recommendations, summary }
         │
         ▼
 clear_cache()                                [backend/cache.py]
@@ -278,7 +287,7 @@ onAnalyzed(data) → App.tsx
         │   └── Chat              — POST /api/chat (Graph RAG)
         │
         └── ReportsView
-            ├── Audit history list (in-memory across session)
+            ├── Audit history list (user-scoped, from PostgreSQL)
             ├── Scope breakdown table (Materials / Energy / Transport %)
             └── Export PDF → POST /api/reports/pdf → ReportLab binary stream
 ```
@@ -347,6 +356,13 @@ Steps:      1. Normalize  2. Weight  3. Ideal+ / Ideal−
             4. Euclidean distances  5. Closeness: Cᵢ = d⁻ / (d⁺ + d⁻)
 ```
 
+**Verified end-to-end on `data/sample_purchase_order.pdf`** (see `tests/test_sample_po_math.py`):
+- Basic sum / Matrix LCA = **4,443.50 kgCO₂e**
+- Leontief EEIO = **4,468.52** (indirect 25.02, multiplier 1.07)
+- Monte Carlo analytic σ ≈ 346, CV ≈ 7.8%
+- Sensitivity: SR + tornado swings, non-linear multi-tier = **4,527.31**
+- TOPSIS ranking S1 > S2 > S3
+
 ---
 
 ## API Endpoints
@@ -362,7 +378,7 @@ Steps:      1. Normalize  2. Weight  3. Ideal+ / Ideal−
 | `GET` | `/api/audits/meta` | id + name + date of user's audits |
 | `DELETE` | `/api/audits` | Delete all of the user's audits |
 | `DELETE` | `/api/audits/{id}` | Delete one audit (owner-scoped) |
-| `GET` | `/api/audits/similar` | Find similar past audits |
+| `GET` | `/api/audits/similar` | Find similar past audits (TF cosine) |
 | `POST` | `/api/charts/hotspot` | Carbon hotspot bar chart |
 | `POST` | `/api/charts/pie` | Emissions breakdown pie chart |
 | `POST` | `/api/charts/sankey` | Supply chain Sankey diagram |
@@ -406,24 +422,18 @@ else:
 
 | Storage | What | Lifetime |
 |---|---|---|
-| Neon (PostgreSQL, cloud) | Audits (JSONB), users, sessions | Permanent |
+| Neon (PostgreSQL, cloud) | Audits (JSONB, `owner_id`), users, sessions | Permanent |
 | `backend/cache.py` (RAM) | MD5-keyed chat responses | Until restart or new upload |
-| `data/audits_store.json` | JSON-file fallback audit store (when DATABASE_URL unset) | Permanent (local file) |
+| `data/audits_store.json` | JSON-file fallback audit index (when DATABASE_URL unset) | Permanent (local file) |
 | `data/audits_full.json` | Complete audit JSON history (fallback) | Permanent (local file) |
 
-**JSON files per audit — fallback stores (used only when DATABASE_URL is unset):**
-
+**Similar-audit search** (`app/vector_store.py`) — pure TF bag-of-words cosine:
 ```
-audits_store.json                      audits_full.json
-─────────────────────────────          ─────────────────────────────────────
-Used for: Similar Audits search        Used for: Chat fallback context
-Keys: project_name, summary,           Keys: project_info, materials[],
-      total_co2, materials[names]            energy[], transport[],
-                                            total_estimated_co2,
-Think: "business card"                      optimization_score,
-                                            recommendations, summary
-                                       Think: "full report"
+query materials → TF vectors → cosine similarity vs. stored audits
+                → top_k matches with match_score (no embeddings, no external calls)
 ```
+With PostgreSQL, records are derived from full audits at query time; the JSON files
+are only used when `DATABASE_URL` is unset.
 
 ---
 

@@ -3,6 +3,10 @@ import logging
 import math
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
 _DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "data")
